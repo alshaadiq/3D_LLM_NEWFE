@@ -1,6 +1,17 @@
 # 3D LLM New Frontend
 
-A modern Vue 3 + TypeScript + Tailwind CSS frontend for the 3D LLM project.
+A modern Vue 3 + TypeScript + Tailwind CSS frontend for the 3D LLM project, featuring the comprehensive Aetosky Design System.
+
+## 🎨 Design System
+
+This project includes a complete design system with:
+- **Consistent Color Palette**: Dark theme with Aetosky green (`#BEF975`) as primary
+- **Typography Scale**: Inter font family with systematic sizing
+- **Component Library**: Pre-built, accessible UI components
+- **Design Tokens**: Comprehensive system for spacing, colors, and typography
+- **TypeScript Support**: Full type safety for design system APIs
+
+👉 **[View Design System Documentation](./DESIGN_SYSTEM.md)**
 
 ## Recommended IDE Setup
 
