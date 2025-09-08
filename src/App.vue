@@ -96,6 +96,23 @@ function deleteDoc(idx: number) {
 
 const currentDoc = computed(() => docs.value[selectedDocIndex.value])
 
+// Function to get conversation title from first user message
+const getConversationTitle = (conversation: any) => {
+  if (!conversation.messages || conversation.messages.length === 0) {
+    return `Chat ${new Date(conversation.created_at).toLocaleDateString()}`
+  }
+  
+  // Find the first user message
+  const firstUserMessage = conversation.messages.find((msg: any) => msg.role === 'user')
+  if (firstUserMessage) {
+    const content = firstUserMessage.content || firstUserMessage.message || ''
+    // Limit to first 50 characters for display
+    return content.length > 50 ? content.substring(0, 47) + '...' : content
+  }
+  
+  return `Chat ${new Date(conversation.created_at).toLocaleDateString()}`
+}
+
 // Initialize stores on mount
 onMounted(async () => {
   // Initialize stores - they will handle their own authentication
@@ -184,20 +201,14 @@ watch(selectedMode, (newMode) => {
     <!-- Header -->
     <div class="bg-surface-primary border-b border-border-primary flex items-center justify-between px-6 col-span-2">
       <div class="flex items-center gap-2">
-        <span class="text-sm text-text-white">Create Work Order</span>
+        <span class="text-sm text-text-white">
+          <template v-if="activeTab === 'assistant'">Create Work Order</template>
+          <template v-else-if="activeTab === 'document'">Document Viewer</template>
+          <template v-else>Aetos Platform</template>
+        </span>
       </div>
       <div class="flex items-center gap-4">
-        <!-- Show chat controls only in assistant tab -->
-        <template v-if="activeTab === 'assistant'">
-          <div class="w-10 h-10 bg-primary-green-bg rounded flex items-center justify-center">
-            <svg class="w-7 h-5 fill-primary-green" viewBox="0 0 28 20"><path d="M19.7236 7.19238L19.9941 7.64746H19.999L24.8438 6.25586L28 8.63867L25.9287 8.08398L21.8184 10.6592L21.8203 10.6611L27.1475 19.5H21.9062L21.7949 15.0488L20.2793 19.5L17.6777 16.3623C18.9523 14.6803 20.6874 12.2707 21.6865 10.7432C21.6874 10.7418 21.6876 10.7397 21.6885 10.7383L21.6826 10.7432L20.1455 11.707V11.7021L16.0801 14.4443L12.7168 16.7129L8.59082 19.499H0L4.10352 12.5391H14.4697L12.3115 9.93848L12.3379 9.93359L11.9502 9.46582L16.541 8.51074L10.6758 7.92871L7.0752 3.5918L15.4863 5.80176L4.58691 0.5H15.6885L19.7236 7.19238Z"/></svg>
-          </div>
-          <div class="flex border border-border-primary bg-surface-primary">
-            <button class="px-3 py-2 text-sm" :class="selectedMode==='Chat' ? 'bg-surface-secondary text-text-white' : 'text-text-neutral'" @click="selectedMode='Chat'">Chat</button>
-            <button class="px-3 py-2 text-sm" :class="selectedMode==='Agent' ? 'bg-surface-secondary text-text-white' : 'text-text-neutral'" @click="selectedMode='Agent'">Agent</button>
-          </div>
-          <button class="px-3 py-3 bg-primary-green text-text-brand text-base font-medium hover:bg-primary-green/90 transition-colors">New Chat</button>
-        </template>
+
 
         <div class="w-px h-14 bg-border-primary"></div>
         <button class="w-6 h-6 text-text-white hover:text-primary-green transition-colors">
@@ -217,26 +228,45 @@ watch(selectedMode, (newMode) => {
           <h1 class="text-xl font-light text-text-white">Welcome to AetosNeuro!</h1>
         </div>
       </div>
-      <div />
+      <!-- Show chat controls only in assistant tab -->
+      <div v-if="activeTab === 'assistant'" class="flex items-center gap-4">
+
+        <div class="flex border border-border-primary bg-surface-primary">
+          <button class="px-3 py-2 text-sm" :class="selectedMode==='Chat' ? 'bg-surface-secondary text-text-white' : 'text-text-neutral'" @click="selectedMode='Chat'">Chat</button>
+          <button class="px-3 py-2 text-sm" :class="selectedMode==='Agent' ? 'bg-surface-secondary text-text-white' : 'text-text-neutral'" @click="selectedMode='Agent'">Agent</button>
+        </div>
+        <button class="px-3 py-3 bg-primary-green text-text-brand text-base font-medium hover:bg-primary-green/90 transition-colors">New Chat</button>
+      </div>
+    </div>
+
+    <!-- Row 2 (Document header) -->
+    <div v-else-if="activeTab === 'document'" class="bg-surface-primary border-b border-border-primary flex items-center justify-between px-6 col-span-2">
+      <div class="flex items-center gap-4">
+        <div class="flex flex-col justify-center">
+          <h1 class="text-xl font-light text-text-white">Document Management</h1>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <button 
+          @click="openUploadModal"
+          class="px-3 py-3 bg-primary-green text-text-brand text-base font-medium hover:bg-primary-green/90 transition-colors"
+        >
+          Upload Document
+        </button>
+      </div>
     </div>
 
     <!-- Content columns vary per tab -->
 
     <!-- Left column (340px) -->
-    <div class="bg-surface-primary border-r border-border-primary border-t border-border-primary flex flex-col">
+    <div class="bg-surface-primary border-r border-border-primary border-t border-border-primary flex flex-col overflow-hidden h-full">
       <!-- Assistant: search + empty chat list -->
       <template v-if="activeTab === 'assistant'">
-        <div class="p-5 border-b border-border-primary">
+        <div class="p-5 border-b border-border-primary flex-shrink-0">
           <div class="relative">
             <input type="text" placeholder="Search" class="w-full h-12 px-3 pr-10 bg-surface-primary border border-border-primary text-text-neutral placeholder-text-neutral text-sm focus:outline-none focus:border-primary-green" />
             <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-white" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 14L11.1 11.1M12.6667 7.33333C12.6667 10.2789 10.2789 12.6667 7.33333 12.6667C4.38781 12.6667 2 10.2789 2 7.33333C2 4.38781 4.38781 2 7.33333 2C10.2789 2 12.6667 4.38781 12.6667 7.33333Z"/></svg>
           </div>
-          <button 
-            @click="chatStore.loadConversations()" 
-            class="mt-2 w-full px-3 py-2 bg-primary-green text-text-brand text-sm hover:bg-primary-green/90 transition-colors"
-          >
-            Reload Conversations
-          </button>
         </div>
         <div v-if="!chatStore.hasConversations && !chatStore.isLoading" class="flex-1 flex flex-col items-center justify-center gap-3 px-6">
           <svg class="w-12 h-12 text-text-neutral" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2"><path d="M42 30C42 31.0609 41.5786 32.0783 40.8284 32.8284C40.0783 33.5786 39.0609 34 38 34H14L6 42V10C6 8.93913 6.42143 7.92172 7.17157 7.17157C7.92172 6.42143 8.93913 6 10 6H38C39.0609 6 40.0783 6.42143 40.8284 7.17157C41.5786 7.92172 42 8.93913 42 10V30Z"/></svg>
@@ -248,34 +278,37 @@ watch(selectedMode, (newMode) => {
           <span class="text-base text-text-tertiary">Loading conversations...</span>
         </div>
         
-        <div v-else class="flex-1 overflow-auto">
-          <div class="px-4 py-4 text-text-neutral text-sm">CONVERSATIONS</div>
-          <div class="flex flex-col">
-            <div 
-              v-for="conversation in chatStore.sortedConversations" 
-              :key="conversation.id" 
-              class="flex items-center gap-3 px-4 py-4 hover:bg-surface-secondary cursor-pointer border-l-2 border-transparent"
-              :class="{ 'border-l-primary-green bg-surface-secondary': chatStore.currentConversationId === conversation.id }"
-              @click="chatStore.selectConversation(conversation.id)"
-            >
-              <div class="w-8 h-8 bg-primary-green/20 rounded flex items-center justify-center flex-shrink-0">
-                <svg class="w-4 h-4 text-primary-green" viewBox="0 0 16 16" fill="currentColor">
-                  <path d="M14 1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.414A2 2 0 0 0 3 11.586l-2 2V2a1 1 0 0 1 1-1h12ZM2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2Z"/>
-                </svg>
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="text-sm text-text-white truncate">{{ conversation.title || `Chat ${new Date(conversation.created_at).toLocaleDateString()}` }}</div>
-                <div class="text-xs text-text-neutral">{{ conversation.message_count || 0 }} messages</div>
-                <div class="text-xs text-text-neutral">{{ new Date(conversation.updated_at).toLocaleDateString() }}</div>
-              </div>
-              <button 
-                class="w-5 h-5 text-text-neutral hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                @click.stop="chatStore.deleteConversation(conversation.id)"
+        <div v-else class="flex-1 overflow-hidden flex flex-col min-h-0">
+          <div class="px-4 py-4 text-text-neutral text-sm flex-shrink-0">CONVERSATIONS</div>
+          <div class="flex-1 overflow-y-auto scrollbar-thin min-h-0">
+            <div class="flex flex-col">
+              <div 
+                v-for="conversation in chatStore.sortedConversations" 
+                :key="conversation.id" 
+                class="group flex items-center gap-3 px-4 py-4 hover:bg-surface-secondary cursor-pointer border-l-2 border-transparent flex-shrink-0"
+                :class="{ 'border-l-primary-green bg-surface-secondary': chatStore.currentConversationId === conversation.id }"
+                @click="chatStore.selectConversation(conversation.id)"
               >
-                <svg viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M8.5 4.5a2.5 2.5 0 0 1 5 0V5h1.5a.5.5 0 0 1 0 1h-1V15a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6H2.5a.5.5 0 0 1 0-1H4v-.5A2.5 2.5 0 0 1 8.5 4.5ZM5 6v9a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V6H5Z"/>
-                </svg>
-              </button>
+                <div class="w-8 h-8 bg-primary-green/20 rounded flex items-center justify-center flex-shrink-0">
+                  <svg class="w-4 h-4 text-primary-green" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M14 1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.414A2 2 0 0 0 3 11.586l-2 2V2a1 1 0 0 1 1-1h12ZM2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2Z"/>
+                  </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm text-text-white truncate">{{ getConversationTitle(conversation) }}</div>
+                  <div class="text-xs text-text-neutral">{{ conversation.messages?.length || 0 }} messages</div>
+                  <div class="text-xs text-text-neutral">{{ new Date(conversation.updated_at).toLocaleDateString() }}</div>
+                </div>
+                <button 
+                  class="w-5 h-5 text-text-neutral hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                  @click.stop="chatStore.deleteConversation(conversation.id)"
+                  title="Delete conversation"
+                >
+                  <svg viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                    <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd"/>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -296,7 +329,7 @@ watch(selectedMode, (newMode) => {
         <div v-else class="flex-1 overflow-auto">
           <div class="px-4 py-4 text-text-neutral">HISTORY</div>
           <div class="flex flex-col divide-y divide-border-primary">
-            <div v-for="(d, idx) in docs" :key="d.id" class="flex items-center gap-3 px-4 py-4 hover:bg-opacity-100 hover:bg-opacity-5 cursor-pointer" @click="selectedDocIndex = idx">
+            <div v-for="(d, idx) in docs" :key="d.id" class="flex items-center gap-3 px-4 py-4 hover:bg-surface-secondary cursor-pointer" @click="selectedDocIndex = idx">
               <div class="w-10 h-10 flex items-center justify-center">
                 <div class="w-6 h-8 bg-text-neutral/50"></div>
               </div>
@@ -364,7 +397,7 @@ watch(selectedMode, (newMode) => {
           <!-- Chat header -->
           <div class="border-b border-border-primary bg-surface-primary px-6 py-4 flex items-center justify-between">
             <div class="flex items-center gap-3">
-              <h3 class="text-lg text-text-white">{{ chatStore.currentConversation.title || 'Chat Conversation' }}</h3>
+              <h3 class="text-lg text-text-white">{{ getConversationTitle(chatStore.currentConversation) }}</h3>
               <span class="px-2 py-1 bg-primary-green/20 text-primary-green text-xs rounded">{{ selectedMode }}</span>
             </div>
             <div class="flex items-center gap-2">
@@ -457,71 +490,68 @@ watch(selectedMode, (newMode) => {
 
         <!-- Input Area -->
         <div class="border-t border-border-primary bg-surface-primary px-10 py-4">
-          <div class="flex flex-col gap-4">
-            <div class="text-sm text-text-neutral"><span class="text-primary-green">|</span>Describe your thinking...</div>
-            <div class="flex gap-3">
-              <div class="flex-1 relative">
-                <input 
-                  v-model="chatInput" 
-                  @keypress.enter="sendChatMessage"
-                  :disabled="chatStore.isLoading"
-                  placeholder="Type your message here..."
-                  class="w-full px-4 py-3 bg-surface-primary border border-border-primary text-text-white placeholder-text-neutral text-sm focus:outline-none focus:border-primary-green"
-                />
-              </div>
-              <div class="flex items-center gap-3">
-                <button 
-                  @click="startNewChat"
-                  class="px-4 py-3 border border-border-secondary text-sm text-text-white hover:border-primary-green transition-colors"
-                >
-                  New Chat
-                </button>
-                <button class="w-10 h-10 border border-border-primary bg-surface-primary flex items-center justify-center hover:border-primary-green transition-colors">
-                  <svg class="w-4.5 h-4.5" viewBox="0 0 18 18" fill="none" stroke="#444444" stroke-width="1">
-                    <path d="M13 7.72727V9C13 10.1814 12.5786 11.3144 11.8284 12.1498C11.0783 12.9852 10.0609 13.4545 9 13.4545M9 13.4545C7.93913 13.4545 6.92172 12.9852 6.17157 12.1498C5.42143 11.3144 5 10.1814 5 9V7.72727M9 13.4545V16M6.71429 16H11.2857M9 2C8.54534 2 8.10931 2.20114 7.78782 2.55916C7.46633 2.91718 7.28571 3.40277 7.28571 3.90909V9C7.28571 9.50632 7.46633 9.99191 7.78782 10.3499C8.10931 10.708 8.54534 10.9091 9 10.9091C9.45466 10.9091 9.89069 10.708 10.2122 10.3499C10.5337 9.99191 10.7143 9.50632 10.7143 9V3.90909C10.7143 3.40277 10.5337 2.91718 10.2122 2.55916C9.89069 2.20114 9.45466 2 9 2Z"/>
-                  </svg>
-                </button>
-                <button 
-                  @click="sendChatMessage" 
-                  :disabled="!chatInput.trim() || chatStore.isLoading"
-                  class="w-10 h-10 border border-primary-green bg-primary-green flex items-center justify-center hover:bg-primary-green/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <svg v-if="!chatStore.isLoading" class="w-4.5 h-4.5 fill-text-brand" viewBox="0 0 18 18">
-                    <path d="M3.86462 1.6764C2.43116 0.959877 0.93044 2.5247 1.70969 3.92695L3.89776 7.86431C4.03005 8.10237 4.28099 8.25 4.55334 8.25L9 8.25C9.41421 8.25 9.75 8.58579 9.75 9C9.75 9.41421 9.41421 9.75 9 9.75L4.55349 9.75C4.28115 9.75 4.03021 9.89763 3.89792 10.1357L1.70969 14.0733C0.930439 15.4756 2.43116 17.0404 3.86462 16.3239L15.5985 10.4587C16.8006 9.85778 16.8006 8.14251 15.5985 7.5416L3.86462 1.6764Z"/>
-                  </svg>
-                  <div v-else class="w-4 h-4 border-2 border-text-brand border-t-transparent rounded-full animate-spin"></div>
-                </button>
-              </div>
+          <div class="flex gap-3 items-center">
+            <div class="flex-1 relative">
+              <input 
+                v-model="chatInput" 
+                @keypress.enter="sendChatMessage"
+                :disabled="chatStore.isLoading"
+                placeholder="Describe your thinking..."
+                class="w-full px-4 py-3 bg-surface-primary text-text-white placeholder-text-neutral text-sm focus:outline-none"
+              />
             </div>
-            <div v-if="chatStore.error" class="text-red-400 text-sm">
-              {{ chatStore.error }}
+            <div class="flex items-center gap-3">
+              <button 
+                @click="startNewChat"
+                class="px-4 py-3 border border-border-secondary text-sm text-text-white hover:border-primary-green transition-colors"
+              >
+                Start New Chat
+              </button>
+              <button class="w-10 h-10 border border-border-primary bg-surface-primary flex items-center justify-center hover:border-primary-green transition-colors">
+                <svg class="w-4.5 h-4.5" viewBox="0 0 18 18" fill="none" stroke="#444444" stroke-width="1">
+                  <path d="M13 7.72727V9C13 10.1814 12.5786 11.3144 11.8284 12.1498C11.0783 12.9852 10.0609 13.4545 9 13.4545M9 13.4545C7.93913 13.4545 6.92172 12.9852 6.17157 12.1498C5.42143 11.3144 5 10.1814 5 9V7.72727M9 13.4545V16M6.71429 16H11.2857M9 2C8.54534 2 8.10931 2.20114 7.78782 2.55916C7.46633 2.91718 7.28571 3.40277 7.28571 3.90909V9C7.28571 9.50632 7.46633 9.99191 7.78782 10.3499C8.10931 10.708 8.54534 10.9091 9 10.9091C9.45466 10.9091 9.89069 10.708 10.2122 10.3499C10.5337 9.99191 10.7143 9.50632 10.7143 9V3.90909C10.7143 3.40277 10.5337 2.91718 10.2122 2.55916C9.89069 2.20114 9.45466 2 9 2Z"/>
+                </svg>
+              </button>
+              <button 
+                @click="sendChatMessage" 
+                :disabled="!chatInput.trim() || chatStore.isLoading"
+                class="w-10 h-10 border border-primary-green bg-primary-green flex items-center justify-center hover:bg-primary-green/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg v-if="!chatStore.isLoading" class="w-4.5 h-4.5 fill-text-brand" viewBox="0 0 18 18">
+                  <path d="M3.86462 1.6764C2.43116 0.959877 0.93044 2.5247 1.70969 3.92695L3.89776 7.86431C4.03005 8.10237 4.28099 8.25 4.55334 8.25L9 8.25C9.41421 8.25 9.75 8.58579 9.75 9C9.75 9.41421 9.41421 9.75 9 9.75L4.55349 9.75C4.28115 9.75 4.03021 9.89763 3.89792 10.1357L1.70969 14.0733C0.930439 15.4756 2.43116 17.0404 3.86462 16.3239L15.5985 10.4587C16.8006 9.85778 16.8006 8.14251 15.5985 7.5416L3.86462 1.6764Z"/>
+                </svg>
+                <div v-else class="w-4 h-4 border-2 border-text-brand border-t-transparent rounded-full animate-spin"></div>
+              </button>
             </div>
+          </div>
+          <div v-if="chatStore.error" class="text-red-400 text-sm mt-2">
+            {{ chatStore.error }}
           </div>
         </div>
       </template>
 
       <!-- Document main -->
       <template v-else-if="activeTab === 'document'">
-        <div class="flex-1 grid grid-cols-[150px_1fr]">
+        <div v-if="!hasDocs" class="flex-1 flex items-center justify-center">
+          <div class="flex flex-col items-center justify-center gap-8">
+            <div class="text-2xl text-text-white text-center">Upload to view your document</div>
+            <div class="border border-dashed border-border-secondary bg-surface-secondary p-12 flex flex-col items-center gap-4 w-[480px] h-[200px] justify-center cursor-pointer hover:border-primary-green transition-colors" @click="openUploadModal">
+              <svg class="w-16 h-16" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M49 35V44.3333C49 45.571 48.5083 46.758 47.6332 47-6332C46.758 48.5083 45.571 49 44.3333 49H11.6667C10.429 49 9.242 48.5083 8.36683 47.6332C7.49167 46.758 7 45.571 7 44.3333V35M39.6667 18.6667L28 7M28 7L16.3333 18.6667M28 7V35" stroke="#BEF975" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <div class="text-lg text-text-white text-center">Drag and drop AOI files here.</div>
+            </div>
+          </div>
+        </div>
+        <div v-else class="flex-1 grid grid-cols-[150px_1fr]">
           <!-- Thumbnails -->
-          <div class="border-r border-border-primary overflow-auto p-4" v-if="hasDocs">
+          <div class="border-r border-border-primary overflow-auto p-4">
             <div v-for="(p, i) in currentDoc?.pages || []" :key="p.id" class="mb-4">
               <img :src="p.src" :alt="`Page ${i+1}`" class="rounded w-full object-cover" />
               <div class="text-sm text-text-white mt-1">{{ i + 1 }}</div>
             </div>
           </div>
-          <!-- Viewer or drop area -->
-          <div class="flex items-center justify-center">
-            <div v-if="!hasDocs" class="flex flex-col items-center gap-6">
-              <div class="text-2xl text-text-white">Upload to view your document</div>
-              <div class="border border-dashed border-border-default-teriary bg-surface-secondary p-8 flex flex-col items-center gap-3 w-[552px] h-[180px] justify-center" @click="openUploadModal">
-                <svg class="w-14 h-14" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M49 35V44.3333C49 45.571 48.5083 46.758 47.6332 47.6332C46.758 48.5083 45.571 49 44.3333 49H11.6667C10.429 49 9.242 48.5083 8.36683 47.6332C7.49167 46.758 7 45.571 7 44.3333V35M39.6667 18.6667L28 7M28 7L16.3333 18.6667M28 7V35" stroke="#BEF975" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                <div class="text-lg text-text-white">Drag and drop AOI files here.</div>
-              </div>
-            </div>
-            <div v-else class="w-full h-full overflow-auto p-6">
-              <img v-for="p in currentDoc?.pages || []" :key="p.id" :src="p.src" class="w-full mb-6 rounded" />
-            </div>
+          <!-- Viewer -->
+          <div class="w-full h-full overflow-auto p-6">
+            <img v-for="p in currentDoc?.pages || []" :key="p.id" :src="p.src" class="w-full mb-6 rounded" />
           </div>
         </div>
 
@@ -586,4 +616,29 @@ watch(selectedMode, (newMode) => {
   <button v-if="activeTab==='document' && !hasDocs && !showUploadModal" class="fixed bottom-6 right-6 bg-primary-green text-text-brand px-4 py-2" @click="openUploadModal">Upload</button>
 </template>
 
-<style scoped></style>
+<style scoped>
+/* Custom scrollbar styles */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #2a2a2a;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #444444;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #555555;
+}
+
+/* Firefox scrollbar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #444444 #2a2a2a;
+}
+</style>
