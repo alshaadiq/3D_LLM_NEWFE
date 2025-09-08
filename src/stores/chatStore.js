@@ -99,6 +99,8 @@ export const useChatStore = defineStore('chat', () => {
       isStreaming.value = true
       error.value = null
 
+      console.log('📤 Sending message:', content)
+
       // Add user message immediately to UI
       const userMessage = {
         id: `temp-${Date.now()}`,
@@ -114,6 +116,8 @@ export const useChatStore = defineStore('chat', () => {
         await createNewConversation()
       }
 
+      console.log('🎯 Sending to conversation:', currentConversation.value.id, 'Mode:', currentMode.value)
+
       // Send message to backend
       const response = await api.chat.sendMessage(
         content, 
@@ -121,13 +125,24 @@ export const useChatStore = defineStore('chat', () => {
         currentMode.value
       )
 
-      // Remove temp message and add real messages
+      console.log('📥 Received response:', response)
+
+      // Remove temp message and update with complete conversation
       messages.value = messages.value.filter(m => m.id !== userMessage.id)
       
-      if (response.messages) {
-        messages.value.push(...response.messages)
+      // Replace messages with the complete conversation from backend
+      if (response.messages && response.messages.length > 0) {
+        // Backend returned full message list - replace existing messages
+        messages.value = response.messages
+        console.log('✅ Messages updated from backend:', response.messages.length, 'total messages')
       } else if (response.message) {
+        // Backend returned single message - add both user and assistant
+        messages.value.push(userMessage) // Add user message back
         messages.value.push(response.message)
+      } else {
+        // Fallback - just add user message back
+        messages.value.push(userMessage)
+        console.warn('No assistant response received')
       }
 
       // Update conversation in list
@@ -138,6 +153,11 @@ export const useChatStore = defineStore('chat', () => {
         }
         currentConversation.value = response.conversation
       }
+
+      // Trigger reactivity update
+      messages.value = [...messages.value]
+
+      console.log('💬 Updated messages:', messages.value.length, 'messages')
 
     } catch (err) {
       error.value = err.message

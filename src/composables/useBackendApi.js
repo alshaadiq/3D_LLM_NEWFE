@@ -3,12 +3,15 @@ import axios from 'axios'
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+  baseURL: import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
 })
+
+// Log the base URL for debugging
+console.log('🔗 Backend API URL:', api.defaults.baseURL)
 
 // Add request interceptor for auth tokens if needed
 api.interceptors.request.use(
@@ -101,16 +104,16 @@ export function useBackendApi() {
           chatId = chatResponse.data.id
         }
         
-        // Send user message
+        // Send user message - backend returns full conversation with AI response
         const response = await api.post(`/chats/${chatId}/messages/user`, {
           message,
           mode: mode.toLowerCase()
         })
         
+        // Backend returns the complete conversation object with all messages
         return {
-          conversation: { id: chatId },
-          message: response.data,
-          messages: [response.data]
+          conversation: response.data,
+          messages: response.data.messages || []
         }
       } catch (err) {
         error.value = err.response?.data?.detail || 'Failed to send message'

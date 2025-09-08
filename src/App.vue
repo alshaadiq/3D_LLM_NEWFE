@@ -322,7 +322,8 @@ watch(selectedMode, (newMode) => {
     <div class="bg-surface-primary flex flex-col border-t border-border-primary overflow-hidden">
       <!-- Assistant main -->
       <template v-if="activeTab === 'assistant'">
-        <div class="flex-1 flex flex-col items-center justify-center gap-6 px-12 py-20">
+        <!-- Welcome screen when no conversation is selected -->
+        <div v-if="!chatStore.currentConversation" class="flex-1 flex flex-col items-center justify-center gap-6 px-12 py-20">
           <div class="flex flex-col items-center gap-10 max-w-4xl">
             <div class="w-18 h-18 bg-primary-green border-2 border-primary-green rounded flex items-center justify-center">
               <svg class="w-15 h-10 fill-text-brand" viewBox="0 0 62 42"><path d="M43.6582 14.7939L44.2578 15.7988H44.2676L46.2676 19.1152L48.2012 22.3213V22.332L48.2021 22.3311V22.3213L46.2686 19.1152L44.2686 15.7979L54.9844 12.7227L61.9658 17.9893L57.3838 16.7637L48.293 22.457L48.2969 22.4629L60.0791 42.001H48.4873L48.2402 32.1611L44.8867 42.001L39.1338 35.0654C41.9531 31.3469 45.7921 26.0205 48.002 22.6436C48.0044 22.6398 48.0063 22.6356 48.0088 22.6318L47.9922 22.6426L44.5918 24.7734V24.7637L35.5996 30.8242L28.1611 35.8389L19.0361 42H0.0341797L9.11133 26.6133H32.0381L27.2656 20.8643L27.3232 20.8545L26.4658 19.8193L36.6191 17.708L23.6465 16.4219L15.6836 6.83398L34.2861 11.7178L10.1777 -0.000976562H34.7334L43.6582 14.7939Z"/></svg>
@@ -351,6 +352,102 @@ watch(selectedMode, (newMode) => {
                   <div class="text-center">
                     <div class="text-lg font-medium text-text-white">Agent</div>
                     <div class="text-base text-text-neutral">Smart document capabilities</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat interface when conversation is selected -->
+        <div v-else class="flex-1 flex flex-col overflow-hidden">
+          <!-- Chat header -->
+          <div class="border-b border-border-primary bg-surface-primary px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <h3 class="text-lg text-text-white">{{ chatStore.currentConversation.title || 'Chat Conversation' }}</h3>
+              <span class="px-2 py-1 bg-primary-green/20 text-primary-green text-xs rounded">{{ selectedMode }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button 
+                @click="startNewChat"
+                class="px-3 py-2 text-sm text-text-neutral hover:text-text-white transition-colors"
+              >
+                New Chat
+              </button>
+              <button 
+                @click="chatStore.clearCurrentConversation"
+                class="w-8 h-8 text-text-neutral hover:text-text-white transition-colors"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Messages area -->
+          <div class="flex-1 overflow-auto p-6 space-y-4">
+            <div v-if="chatStore.messages.length === 0" class="flex items-center justify-center h-full text-text-neutral">
+              <p>No messages yet. Start the conversation!</p>
+            </div>
+            
+            <div v-for="message in chatStore.messages" :key="message.id" class="flex gap-4">
+              <!-- User message -->
+              <div v-if="message.role === 'user'" class="flex gap-3 max-w-[80%] ml-auto">
+                <div class="flex flex-col gap-1">
+                  <div class="bg-primary-green text-text-brand px-4 py-3 rounded-lg rounded-br-sm">
+                    {{ (message as any).content || (message as any).message }}
+                  </div>
+                  <div class="text-xs text-text-neutral text-right">
+                    {{ new Date((message as any).timestamp || (message as any).date).toLocaleTimeString() }}
+                  </div>
+                </div>
+                <div class="w-8 h-8 bg-primary-green rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg class="w-4 h-4 text-text-brand" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM12.735 14c.618 0 1.093-.561.872-1.139a6.002 6.002 0 0 0-11.215 0c-.22.578.254 1.139.872 1.139h9.47Z"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Assistant message -->
+              <div v-else class="flex gap-3 max-w-[80%]">
+                <div class="w-8 h-8 bg-surface-secondary rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg class="w-4 h-4 text-primary-green" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492ZM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0Z"/>
+                    <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319Z"/>
+                  </svg>
+                </div>
+                <div class="flex flex-col gap-1">
+                  <div 
+                    class="bg-surface-secondary text-text-white px-4 py-3 rounded-lg rounded-bl-sm"
+                    :class="{ 'border border-red-500': message.error }"
+                  >
+                    {{ (message as any).content || (message as any).message }}
+                  </div>
+                  <div class="text-xs text-text-neutral">
+                    {{ new Date((message as any).timestamp || (message as any).date).toLocaleTimeString() }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Loading indicator -->
+            <div v-if="chatStore.isStreaming" class="flex gap-3 max-w-[80%]">
+              <div class="w-8 h-8 bg-surface-secondary rounded-full flex items-center justify-center flex-shrink-0">
+                <svg class="w-4 h-4 text-primary-green" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492ZM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0Z"/>
+                  <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319Z"/>
+                </svg>
+              </div>
+              <div class="flex flex-col gap-1">
+                <div class="bg-surface-secondary text-text-white px-4 py-3 rounded-lg rounded-bl-sm">
+                  <div class="flex items-center gap-2">
+                    <div class="flex gap-1">
+                      <div class="w-2 h-2 bg-primary-green rounded-full animate-bounce"></div>
+                      <div class="w-2 h-2 bg-primary-green rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                      <div class="w-2 h-2 bg-primary-green rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                    </div>
+                    <span class="text-text-neutral text-sm">Thinking...</span>
                   </div>
                 </div>
               </div>
