@@ -1,33 +1,21 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { useBackendApi } from '@/composables/useBackendApi'
-import type { Function } from '@/types/api'
-
-interface ExecutionHistory {
-  id: string
-  function_name: string
-  parameters: any
-  result?: any
-  error?: string
-  executed_at: string
-  execution_time?: number
-  status: 'success' | 'failed'
-}
+import { useBackendApi } from '../composables/useBackendApi.js'
 
 export const useFunctionStore = defineStore('function', () => {
   const api = useBackendApi()
   
   // State
-  const availableFunctions = ref<Function[]>([])
-  const executionHistory = ref<ExecutionHistory[]>([])
+  const availableFunctions = ref([])
+  const executionHistory = ref([])
   const isLoading = ref(false)
-  const error = ref<string | null>(null)
+  const error = ref(null)
   const isExecuting = ref(false)
 
   // Getters
   const hasFunctions = computed(() => availableFunctions.value.length > 0)
   const functionsByCategory = computed(() => {
-    const grouped: Record<string, Function[]> = {}
+    const grouped = {}
     availableFunctions.value.forEach(func => {
       const category = func.category || 'general'
       if (!grouped[category]) grouped[category] = []
@@ -37,7 +25,7 @@ export const useFunctionStore = defineStore('function', () => {
   })
   const recentExecutions = computed(() => 
     [...executionHistory.value]
-      .sort((a, b) => new Date(b.executed_at).getTime() - new Date(a.executed_at).getTime())
+      .sort((a, b) => new Date(b.executed_at) - new Date(a.executed_at))
       .slice(0, 10)
   )
 
@@ -52,7 +40,7 @@ export const useFunctionStore = defineStore('function', () => {
       
       const data = await api.functions.getAvailableFunctions()
       availableFunctions.value = data
-    } catch (err: any) {
+    } catch (err) {
       // Don't show error for connection refused or 404 - backend might be starting or endpoint unavailable
       if (err.code !== 'ERR_NETWORK' && err.code !== 'ECONNREFUSED' && err.response?.status !== 404) {
         error.value = err.message
@@ -65,7 +53,7 @@ export const useFunctionStore = defineStore('function', () => {
     }
   }
 
-  async function executeFunction(functionName: string, parameters: any = {}) {
+  async function executeFunction(functionName, parameters = {}) {
     try {
       isExecuting.value = true
       error.value = null
@@ -76,7 +64,7 @@ export const useFunctionStore = defineStore('function', () => {
       const executionTime = endTime - startTime
 
       // Add to execution history
-      const execution: ExecutionHistory = {
+      const execution = {
         id: `exec-${Date.now()}`,
         function_name: functionName,
         parameters,
@@ -95,9 +83,9 @@ export const useFunctionStore = defineStore('function', () => {
 
       return result
       
-    } catch (err: any) {
+    } catch (err) {
       // Add failed execution to history
-      const execution: ExecutionHistory = {
+      const execution = {
         id: `exec-${Date.now()}`,
         function_name: functionName,
         parameters,
@@ -116,11 +104,11 @@ export const useFunctionStore = defineStore('function', () => {
     }
   }
 
-  function getFunctionByName(name: string) {
-    return availableFunctions.value.find(func => func.function_name === name)
+  function getFunctionByName(name) {
+    return availableFunctions.value.find(func => func.name === name)
   }
 
-  function getFunctionsByCategory(category: string) {
+  function getFunctionsByCategory(category) {
     return availableFunctions.value.filter(func => 
       (func.category || 'general') === category
     )
@@ -134,12 +122,12 @@ export const useFunctionStore = defineStore('function', () => {
     error.value = null
   }
 
-  function getExecutionById(id: string) {
+  function getExecutionById(id) {
     return executionHistory.value.find(exec => exec.id === id)
   }
 
   // Helper functions
-  function formatExecutionTime(milliseconds: number): string {
+  function formatExecutionTime(milliseconds) {
     if (milliseconds < 1000) {
       return `${milliseconds}ms`
     } else if (milliseconds < 60000) {
@@ -151,7 +139,7 @@ export const useFunctionStore = defineStore('function', () => {
     }
   }
 
-  function validateParameters(functionName: string, parameters: any): boolean {
+  function validateParameters(functionName, parameters) {
     const func = getFunctionByName(functionName)
     if (!func) {
       throw new Error(`Function '${functionName}' not found`)
@@ -160,11 +148,11 @@ export const useFunctionStore = defineStore('function', () => {
     if (!func.parameters) return true
 
     // Basic parameter validation
-    const required = (func.parameters as any[]).filter(p => p.required)
-    const missing = required.filter(param => !(param.name in parameters))
+    const required = func.parameters.required || []
+    const missing = required.filter(param => !(param in parameters))
     
     if (missing.length > 0) {
-      throw new Error(`Missing required parameters: ${missing.map(p => p.name).join(', ')}`)
+      throw new Error(`Missing required parameters: ${missing.join(', ')}`)
     }
 
     return true

@@ -1,29 +1,28 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { useBackendApi } from '@/composables/useBackendApi'
-import type { Document, UploadProgress } from '@/types/api'
+import { useBackendApi } from '../composables/useBackendApi.js'
 
 export const useDocumentStore = defineStore('document', () => {
   const api = useBackendApi()
   
   // State
-  const documents = ref<Document[]>([])
-  const currentDocument = ref<Document | null>(null)
-  const uploadProgress = ref<Record<string, UploadProgress>>({})
+  const documents = ref([])
+  const currentDocument = ref(null)
+  const uploadProgress = ref({})
   const isLoading = ref(false)
-  const error = ref<string | null>(null)
-  const searchResults = ref<any[]>([])
+  const error = ref(null)
+  const searchResults = ref([])
   const isSearching = ref(false)
 
   // Getters
   const hasDocuments = computed(() => documents.value.length > 0)
   const sortedDocuments = computed(() => 
-    [...documents.value].sort((a, b) => new Date(b.upload_date).getTime() - new Date(a.upload_date).getTime())
+    [...documents.value].sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at))
   )
   const documentsByType = computed(() => {
-    const grouped: Record<string, Document[]> = {}
+    const grouped = {}
     documents.value.forEach(doc => {
-      const type = doc.content_type || 'unknown'
+      const type = doc.file_type || 'unknown'
       if (!grouped[type]) grouped[type] = []
       grouped[type].push(doc)
     })
@@ -41,7 +40,7 @@ export const useDocumentStore = defineStore('document', () => {
       
       const data = await api.documents.getDocuments()
       documents.value = data
-    } catch (err: any) {
+    } catch (err) {
       // Don't show error for connection refused, 403, or 404 - backend might be starting or endpoint unavailable
       if (err.code !== 'ERR_NETWORK' && err.code !== 'ECONNREFUSED' && 
           err.response?.status !== 403 && err.response?.status !== 404) {
@@ -55,7 +54,7 @@ export const useDocumentStore = defineStore('document', () => {
     }
   }
 
-  async function uploadDocument(file: File) {
+  async function uploadDocument(file) {
     const fileId = `upload-${Date.now()}-${file.name}`
     
     try {
@@ -67,26 +66,22 @@ export const useDocumentStore = defineStore('document', () => {
         status: 'pending'
       }
 
-      const onProgress = (progress: number) => {
-        if (uploadProgress.value[fileId]) {
-          uploadProgress.value[fileId].progress = progress
-        }
+      const onProgress = (progress) => {
+        uploadProgress.value[fileId].progress = progress
       }
 
       const result = await api.documents.uploadDocument(file, onProgress)
       
       // Update progress to success
-      if (uploadProgress.value[fileId]) {
-        uploadProgress.value[fileId].status = 'success'
-        uploadProgress.value[fileId].progress = 100
-      }
+      uploadProgress.value[fileId].status = 'success'
+      uploadProgress.value[fileId].progress = 100
 
       // Add to documents list
       documents.value.unshift(result)
       
       return result
       
-    } catch (err: any) {
+    } catch (err) {
       // Update progress to failed
       if (uploadProgress.value[fileId]) {
         uploadProgress.value[fileId].status = 'failed'
@@ -99,15 +94,15 @@ export const useDocumentStore = defineStore('document', () => {
     }
   }
 
-  async function uploadMultipleDocuments(files: File[]) {
-    const results: Document[] = []
-    const errors: { file: string; error: string }[] = []
+  async function uploadMultipleDocuments(files) {
+    const results = []
+    const errors = []
 
     for (const file of files) {
       try {
         const result = await uploadDocument(file)
         results.push(result)
-      } catch (err: any) {
+      } catch (err) {
         errors.push({ file: file.name, error: err.message })
       }
     }
@@ -115,7 +110,7 @@ export const useDocumentStore = defineStore('document', () => {
     return { results, errors }
   }
 
-  async function deleteDocument(documentId: string) {
+  async function deleteDocument(documentId) {
     try {
       await api.documents.deleteDocument(documentId)
       
@@ -127,14 +122,14 @@ export const useDocumentStore = defineStore('document', () => {
         currentDocument.value = null
       }
       
-    } catch (err: any) {
+    } catch (err) {
       error.value = err.message
       console.error('Failed to delete document:', err)
       throw err
     }
   }
 
-  async function selectDocument(documentId: string) {
+  async function selectDocument(documentId) {
     try {
       isLoading.value = true
       error.value = null
@@ -142,7 +137,7 @@ export const useDocumentStore = defineStore('document', () => {
       const document = await api.documents.getDocument(documentId)
       currentDocument.value = document
       
-    } catch (err: any) {
+    } catch (err) {
       error.value = err.message
       console.error('Failed to load document:', err)
     } finally {
@@ -150,7 +145,7 @@ export const useDocumentStore = defineStore('document', () => {
     }
   }
 
-  async function searchDocuments(query: string) {
+  async function searchDocuments(query) {
     if (!query.trim()) {
       searchResults.value = []
       return
@@ -165,7 +160,7 @@ export const useDocumentStore = defineStore('document', () => {
       
       return results
       
-    } catch (err: any) {
+    } catch (err) {
       error.value = err.message
       console.error('Failed to search documents:', err)
       searchResults.value = []
@@ -174,7 +169,7 @@ export const useDocumentStore = defineStore('document', () => {
     }
   }
 
-  function clearUploadProgress(fileId?: string) {
+  function clearUploadProgress(fileId = null) {
     if (fileId) {
       delete uploadProgress.value[fileId]
     } else {
@@ -190,12 +185,12 @@ export const useDocumentStore = defineStore('document', () => {
     error.value = null
   }
 
-  function getDocumentById(id: string) {
+  function getDocumentById(id) {
     return documents.value.find(doc => doc.id === id)
   }
 
   // Helper functions
-  function formatFileSize(bytes: number): string {
+  function formatFileSize(bytes) {
     if (bytes === 0) return '0 Bytes'
     const k = 1024
     const sizes = ['Bytes', 'KB', 'MB', 'GB']
@@ -203,8 +198,8 @@ export const useDocumentStore = defineStore('document', () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 
-  function getFileIcon(fileType?: string): string {
-    const iconMap: Record<string, string> = {
+  function getFileIcon(fileType) {
+    const iconMap = {
       'pdf': '📄',
       'doc': '📝',
       'docx': '📝',
@@ -215,7 +210,7 @@ export const useDocumentStore = defineStore('document', () => {
       'pptx': '📈',
       'default': '📄'
     }
-    return iconMap[fileType?.toLowerCase() || 'default'] || iconMap.default
+    return iconMap[fileType?.toLowerCase()] || iconMap.default
   }
 
   // Initialize store

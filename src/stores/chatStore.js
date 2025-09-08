@@ -1,25 +1,24 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { useBackendApi } from '@/composables/useBackendApi'
-import type { Conversation, Message } from '@/types/api'
+import { useBackendApi } from '../composables/useBackendApi.js'
 
 export const useChatStore = defineStore('chat', () => {
   const api = useBackendApi()
   
   // State
-  const conversations = ref<Conversation[]>([])
-  const currentConversation = ref<Conversation | null>(null)
-  const messages = ref<Message[]>([])
+  const conversations = ref([])
+  const currentConversation = ref(null)
+  const messages = ref([])
   const isLoading = ref(false)
-  const error = ref<string | null>(null)
-  const currentMode = ref<'chat' | 'agent'>('agent')
+  const error = ref(null)
+  const currentMode = ref('agent') // 'chat' or 'agent'
   const isStreaming = ref(false)
 
   // Getters
   const hasConversations = computed(() => conversations.value.length > 0)
   const currentConversationId = computed(() => currentConversation.value?.id || null)
   const sortedConversations = computed(() => 
-    [...conversations.value].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    [...conversations.value].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
   )
 
   // Actions
@@ -28,25 +27,32 @@ export const useChatStore = defineStore('chat', () => {
       isLoading.value = true
       error.value = null
       
+      console.log('Loading conversations...')
+      
       // Initialize authentication first
       await api.initAuth()
       
       const data = await api.chat.getConversations()
+      console.log('Received conversations:', data)
       conversations.value = data
-    } catch (err: any) {
-      // Don't show error for connection refused or 404 - backend might be starting or endpoint unavailable
-      if (err.code !== 'ERR_NETWORK' && err.code !== 'ECONNREFUSED' && err.response?.status !== 404) {
+      
+      console.log('Conversations loaded successfully:', conversations.value.length)
+    } catch (err) {
+      console.error('Failed to load conversations:', err)
+      // Don't show error for connection refused, 404, or 401 - backend might be starting or auth issues
+      if (err.code !== 'ERR_NETWORK' && err.code !== 'ECONNREFUSED' && 
+          err.response?.status !== 404 && err.response?.status !== 401) {
         error.value = err.message
         console.error('Failed to load conversations:', err)
       } else {
-        console.warn('Conversations endpoint not available, starting with empty state')
+        console.warn('Conversations endpoint not available or auth issue, starting with empty state')
       }
     } finally {
       isLoading.value = false
     }
   }
 
-  async function createNewConversation(title?: string) {
+  async function createNewConversation(title = null) {
     try {
       isLoading.value = true
       error.value = null
@@ -59,7 +65,7 @@ export const useChatStore = defineStore('chat', () => {
       messages.value = []
       
       return conversation
-    } catch (err: any) {
+    } catch (err) {
       error.value = err.message
       console.error('Failed to create conversation:', err)
       throw err
@@ -68,7 +74,7 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  async function selectConversation(conversationId: string) {
+  async function selectConversation(conversationId) {
     try {
       isLoading.value = true
       error.value = null
@@ -77,7 +83,7 @@ export const useChatStore = defineStore('chat', () => {
       currentConversation.value = conversation
       messages.value = conversation.messages || []
       
-    } catch (err: any) {
+    } catch (err) {
       error.value = err.message
       console.error('Failed to load conversation:', err)
     } finally {
@@ -85,23 +91,23 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  async function sendMessage(content: string, attachments: any[] = []) {
+  async function sendMessage(content, attachments = []) {
     if (!content.trim()) return
-
-    // Add user message immediately to UI
-    const userMessage: Message = {
-      id: `temp-${Date.now()}`,
-      content,
-      role: 'user',
-      timestamp: new Date().toISOString(),
-      attachments
-    }
-    messages.value.push(userMessage)
 
     try {
       isLoading.value = true
       isStreaming.value = true
       error.value = null
+
+      // Add user message immediately to UI
+      const userMessage = {
+        id: `temp-${Date.now()}`,
+        content,
+        role: 'user',
+        timestamp: new Date().toISOString(),
+        attachments
+      }
+      messages.value.push(userMessage)
 
       // If no current conversation, create one
       if (!currentConversation.value) {
@@ -111,7 +117,7 @@ export const useChatStore = defineStore('chat', () => {
       // Send message to backend
       const response = await api.chat.sendMessage(
         content, 
-        currentConversation.value!.id,
+        currentConversation.value.id,
         currentMode.value
       )
 
@@ -133,7 +139,7 @@ export const useChatStore = defineStore('chat', () => {
         currentConversation.value = response.conversation
       }
 
-    } catch (err: any) {
+    } catch (err) {
       error.value = err.message
       console.error('Failed to send message:', err)
       
@@ -154,7 +160,7 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  async function deleteConversation(conversationId: string) {
+  async function deleteConversation(conversationId) {
     try {
       await api.chat.deleteConversation(conversationId)
       
@@ -167,16 +173,16 @@ export const useChatStore = defineStore('chat', () => {
         messages.value = []
       }
       
-    } catch (err: any) {
+    } catch (err) {
       error.value = err.message
       console.error('Failed to delete conversation:', err)
       throw err
     }
   }
 
-  function setMode(mode: string) {
+  function setMode(mode) {
     if (['chat', 'agent'].includes(mode.toLowerCase())) {
-      currentMode.value = mode.toLowerCase() as 'chat' | 'agent'
+      currentMode.value = mode.toLowerCase()
     }
   }
 

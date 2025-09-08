@@ -1,6 +1,5 @@
 import { ref } from 'vue'
 import axios from 'axios'
-import type { User, LoginRequest, LoginResponse, Message, Conversation, Document, Function } from '@/types/api'
 
 // Create axios instance with base configuration
 const api = axios.create({
@@ -11,9 +10,10 @@ const api = axios.create({
   },
 })
 
-// Add request interceptor for auth tokens
+// Add request interceptor for auth tokens if needed
 api.interceptors.request.use(
   (config) => {
+    // Use fixed token for now
     const token = 'secret-token'
     config.headers.Authorization = `Bearer ${token}`
     return config
@@ -22,7 +22,8 @@ api.interceptors.request.use(
 )
 
 // Simple authentication method to get token
-function getAuthToken() {
+async function getAuthToken() {
+  // Just return the fixed token for now
   return 'secret-token'
 }
 
@@ -42,26 +43,28 @@ api.interceptors.response.use(
 
 export function useBackendApi() {
   const loading = ref(false)
-  const error = ref<string | null>(null)
+  const error = ref(null)
 
   // Initialize authentication
   const initAuth = async () => {
-    // No need for complex auth initialization
-    return true
+    try {
+      await getAuthToken()
+    } catch (error) {
+      console.warn('Initial authentication failed:', error.message)
+    }
   }
 
   // Auth endpoints
   const auth = {
-    async login(credentials: LoginRequest): Promise<LoginResponse> {
+    async login(username, password) {
       loading.value = true
       error.value = null
       try {
-        const response = await api.post('/auth/login', credentials)
+        const response = await api.post('/auth/login', { username, password })
         const token = response.data.access_token
         localStorage.setItem('auth_token', token)
-        localStorage.setItem('auth_user', JSON.stringify(response.data.user))
         return response.data
-      } catch (err: any) {
+      } catch (err) {
         error.value = err.response?.data?.detail || 'Login failed'
         throw err
       } finally {
@@ -69,28 +72,17 @@ export function useBackendApi() {
       }
     },
 
-    async logout(): Promise<boolean> {
+    async logout() {
       localStorage.removeItem('auth_token')
-      localStorage.removeItem('auth_user')
       return true
     },
 
-    async getCurrentUser(): Promise<User> {
+    async getCurrentUser() {
       try {
         const response = await api.get('/auth/me')
         return response.data
-      } catch (err: any) {
+      } catch (err) {
         error.value = err.response?.data?.detail || 'Failed to get user info'
-        throw err
-      }
-    },
-
-    async verifyToken(): Promise<{ valid: boolean; user?: User }> {
-      try {
-        const response = await api.get('/auth/verify')
-        return response.data
-      } catch (err: any) {
-        error.value = err.response?.data?.detail || 'Token verification failed'
         throw err
       }
     }
@@ -98,7 +90,7 @@ export function useBackendApi() {
 
   // Chat endpoints
   const chat = {
-    async sendMessage(message: string, conversationId: string | null = null, mode = 'agent'): Promise<any> {
+    async sendMessage(message, conversationId = null, mode = 'agent') {
       loading.value = true
       error.value = null
       try {
@@ -120,7 +112,7 @@ export function useBackendApi() {
           message: response.data,
           messages: [response.data]
         }
-      } catch (err: any) {
+      } catch (err) {
         error.value = err.response?.data?.detail || 'Failed to send message'
         throw err
       } finally {
@@ -128,12 +120,12 @@ export function useBackendApi() {
       }
     },
 
-    async getConversations(): Promise<Conversation[]> {
+    async getConversations() {
       try {
         // Backend uses /chats to list conversations
         const response = await api.get('/chats')
         return response.data || []
-      } catch (err: any) {
+      } catch (err) {
         // Don't throw error on 404, just return empty array
         if (err.response?.status === 404) {
           return []
@@ -143,7 +135,7 @@ export function useBackendApi() {
       }
     },
 
-    async getConversation(conversationId: string): Promise<Conversation> {
+    async getConversation(conversationId) {
       try {
         const response = await api.get(`/chats/${conversationId}`)
         return {
@@ -153,23 +145,23 @@ export function useBackendApi() {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }
-      } catch (err: any) {
+      } catch (err) {
         error.value = err.response?.data?.detail || 'Failed to get conversation'
         throw err
       }
     },
 
-    async deleteConversation(conversationId: string): Promise<boolean> {
+    async deleteConversation(conversationId) {
       try {
         await api.delete(`/chats/${conversationId}`)
         return true
-      } catch (err: any) {
+      } catch (err) {
         error.value = err.response?.data?.detail || 'Failed to delete conversation'
         throw err
       }
     },
 
-    async createConversation(title = 'New Conversation'): Promise<Conversation> {
+    async createConversation(title = 'New Conversation') {
       try {
         const response = await api.post('/chats')
         return {
@@ -179,7 +171,7 @@ export function useBackendApi() {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }
-      } catch (err: any) {
+      } catch (err) {
         error.value = err.response?.data?.detail || 'Failed to create conversation'
         throw err
       }
@@ -188,21 +180,21 @@ export function useBackendApi() {
 
   // Document endpoints
   const documents = {
-    async uploadDocument(file: File, onProgress?: (progress: number) => void): Promise<Document> {
+    async uploadDocument(file, onProgress = null) {
       loading.value = true
       error.value = null
       try {
         const formData = new FormData()
         formData.append('file', file)
 
-        const config: any = {
+        const config = {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
         }
 
         if (onProgress) {
-          config.onUploadProgress = (progressEvent: any) => {
+          config.onUploadProgress = (progressEvent) => {
             const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total)
             onProgress(progress)
           }
@@ -210,7 +202,7 @@ export function useBackendApi() {
 
         const response = await api.post('/documents/upload', formData, config)
         return response.data
-      } catch (err: any) {
+      } catch (err) {
         error.value = err.response?.data?.detail || 'Failed to upload document'
         throw err
       } finally {
@@ -218,43 +210,43 @@ export function useBackendApi() {
       }
     },
 
-    async getDocuments(): Promise<Document[]> {
+    async getDocuments() {
       try {
         // Backend may not have a direct documents list endpoint
         // Return empty array for now to avoid 403/404 errors
         return []
-      } catch (err: any) {
+      } catch (err) {
         // Don't throw error, just return empty array
         console.warn('Documents endpoint not available:', err.message)
         return []
       }
     },
 
-    async getDocument(documentId: string): Promise<Document> {
+    async getDocument(documentId) {
       try {
         const response = await api.get(`/documents/${documentId}`)
         return response.data
-      } catch (err: any) {
+      } catch (err) {
         error.value = err.response?.data?.detail || 'Failed to get document'
         throw err
       }
     },
 
-    async deleteDocument(documentId: string): Promise<boolean> {
+    async deleteDocument(documentId) {
       try {
         await api.delete(`/documents/${documentId}`)
         return true
-      } catch (err: any) {
+      } catch (err) {
         error.value = err.response?.data?.detail || 'Failed to delete document'
         throw err
       }
     },
 
-    async searchDocuments(query: string): Promise<any[]> {
+    async searchDocuments(query) {
       try {
         const response = await api.post('/documents/search', { query })
         return response.data
-      } catch (err: any) {
+      } catch (err) {
         error.value = err.response?.data?.detail || 'Failed to search documents'
         throw err
       }
@@ -263,19 +255,19 @@ export function useBackendApi() {
 
   // Function calling endpoints
   const functions = {
-    async getAvailableFunctions(): Promise<Function[]> {
+    async getAvailableFunctions() {
       try {
         // Backend may not have a direct functions list endpoint
         // Return empty array for now to avoid 404 errors  
         return []
-      } catch (err: any) {
+      } catch (err) {
         // Don't throw error, just return empty array
         console.warn('Functions endpoint not available:', err.message)
         return []
       }
     },
 
-    async executeFunction(functionName: string, parameters: any): Promise<any> {
+    async executeFunction(functionName, parameters) {
       loading.value = true
       error.value = null
       try {
@@ -285,7 +277,7 @@ export function useBackendApi() {
           arguments: parameters
         })
         return response.data
-      } catch (err: any) {
+      } catch (err) {
         // Fallback to regular function execution if available
         try {
           const response = await api.post('/functions/execute', {
@@ -293,7 +285,7 @@ export function useBackendApi() {
             parameters
           })
           return response.data
-        } catch (fallbackErr: any) {
+        } catch (fallbackErr) {
           error.value = err.response?.data?.detail || 'Failed to execute function'
           throw err
         }
@@ -305,11 +297,11 @@ export function useBackendApi() {
 
   // Health check
   const health = {
-    async check(): Promise<any> {
+    async check() {
       try {
         const response = await api.get('/health')
         return response.data
-      } catch (err: any) {
+      } catch (err) {
         error.value = err.response?.data?.detail || 'Health check failed'
         throw err
       }
@@ -328,6 +320,3 @@ export function useBackendApi() {
     api // Expose the axios instance for custom requests
   }
 }
-
-// Export types for use in other files
-export type { User, LoginRequest, LoginResponse, Message, Conversation, Document, Function }

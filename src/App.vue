@@ -97,7 +97,8 @@ function deleteDoc(idx: number) {
 const currentDoc = computed(() => docs.value[selectedDocIndex.value])
 
 // Initialize stores on mount
-onMounted(() => {
+onMounted(async () => {
+  // Initialize stores - they will handle their own authentication
   chatStore.initialize()
   documentStore.initialize()
   functionStore.initialize()
@@ -230,10 +231,53 @@ watch(selectedMode, (newMode) => {
             <input type="text" placeholder="Search" class="w-full h-12 px-3 pr-10 bg-surface-primary border border-border-primary text-text-neutral placeholder-text-neutral text-sm focus:outline-none focus:border-primary-green" />
             <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-white" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 14L11.1 11.1M12.6667 7.33333C12.6667 10.2789 10.2789 12.6667 7.33333 12.6667C4.38781 12.6667 2 10.2789 2 7.33333C2 4.38781 4.38781 2 7.33333 2C10.2789 2 12.6667 4.38781 12.6667 7.33333Z"/></svg>
           </div>
+          <button 
+            @click="chatStore.loadConversations()" 
+            class="mt-2 w-full px-3 py-2 bg-primary-green text-text-brand text-sm hover:bg-primary-green/90 transition-colors"
+          >
+            Reload Conversations
+          </button>
         </div>
-        <div class="flex-1 flex flex-col items-center justify-center gap-3 px-6">
+        <div v-if="!chatStore.hasConversations && !chatStore.isLoading" class="flex-1 flex flex-col items-center justify-center gap-3 px-6">
           <svg class="w-12 h-12 text-text-neutral" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2"><path d="M42 30C42 31.0609 41.5786 32.0783 40.8284 32.8284C40.0783 33.5786 39.0609 34 38 34H14L6 42V10C6 8.93913 6.42143 7.92172 7.17157 7.17157C7.92172 6.42143 8.93913 6 10 6H38C39.0609 6 40.0783 6.42143 40.8284 7.17157C41.5786 7.92172 42 8.93913 42 10V30Z"/></svg>
           <span class="text-base text-text-tertiary">No conversation yet</span>
+        </div>
+        
+        <div v-else-if="chatStore.isLoading" class="flex-1 flex flex-col items-center justify-center gap-3 px-6">
+          <div class="w-8 h-8 border-2 border-primary-green border-t-transparent rounded-full animate-spin"></div>
+          <span class="text-base text-text-tertiary">Loading conversations...</span>
+        </div>
+        
+        <div v-else class="flex-1 overflow-auto">
+          <div class="px-4 py-4 text-text-neutral text-sm">CONVERSATIONS</div>
+          <div class="flex flex-col">
+            <div 
+              v-for="conversation in chatStore.sortedConversations" 
+              :key="conversation.id" 
+              class="flex items-center gap-3 px-4 py-4 hover:bg-surface-secondary cursor-pointer border-l-2 border-transparent"
+              :class="{ 'border-l-primary-green bg-surface-secondary': chatStore.currentConversationId === conversation.id }"
+              @click="chatStore.selectConversation(conversation.id)"
+            >
+              <div class="w-8 h-8 bg-primary-green/20 rounded flex items-center justify-center flex-shrink-0">
+                <svg class="w-4 h-4 text-primary-green" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M14 1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.414A2 2 0 0 0 3 11.586l-2 2V2a1 1 0 0 1 1-1h12ZM2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2Z"/>
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm text-text-white truncate">{{ conversation.title || `Chat ${new Date(conversation.created_at).toLocaleDateString()}` }}</div>
+                <div class="text-xs text-text-neutral">{{ conversation.message_count || 0 }} messages</div>
+                <div class="text-xs text-text-neutral">{{ new Date(conversation.updated_at).toLocaleDateString() }}</div>
+              </div>
+              <button 
+                class="w-5 h-5 text-text-neutral hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                @click.stop="chatStore.deleteConversation(conversation.id)"
+              >
+                <svg viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M8.5 4.5a2.5 2.5 0 0 1 5 0V5h1.5a.5.5 0 0 1 0 1h-1V15a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6H2.5a.5.5 0 0 1 0-1H4v-.5A2.5 2.5 0 0 1 8.5 4.5ZM5 6v9a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V6H5Z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
       </template>
 
