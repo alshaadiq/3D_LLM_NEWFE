@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
+import { useChatStore } from '@/stores/chatStore'
+import { useDocumentStore } from '@/stores/documentStore'
+import { useFunctionStore } from '@/stores/functionStore'
+
+// Initialize stores
+const chatStore = useChatStore()
+const documentStore = useDocumentStore()
+const functionStore = useFunctionStore()
 
 // Global navigation state
 const sidebarExpanded = ref(false)
@@ -8,6 +16,25 @@ const selectedMode = ref<'Chat' | 'Agent'>('Agent')
 
 const toggleSidebar = () => {
   sidebarExpanded.value = !sidebarExpanded.value
+}
+
+// Chat functionality
+const chatInput = ref('')
+
+const sendChatMessage = async () => {
+  if (!chatInput.value.trim() || chatStore.isLoading) return
+  
+  const message = chatInput.value.trim()
+  chatInput.value = ''
+  
+  // Set the mode in the store
+  chatStore.setMode(selectedMode.value.toLowerCase())
+  
+  await chatStore.sendMessage(message)
+}
+
+const startNewChat = async () => {
+  await chatStore.createNewConversation()
 }
 
 // Document tab UI-only state
@@ -68,6 +95,18 @@ function deleteDoc(idx: number) {
 }
 
 const currentDoc = computed(() => docs.value[selectedDocIndex.value])
+
+// Initialize stores on mount
+onMounted(() => {
+  chatStore.initialize()
+  documentStore.initialize()
+  functionStore.initialize()
+})
+
+// Watch for mode changes to update chat behavior
+watch(selectedMode, (newMode) => {
+  chatStore.setMode(newMode.toLowerCase())
+})
 </script>
 
 <template>
@@ -277,23 +316,44 @@ const currentDoc = computed(() => docs.value[selectedDocIndex.value])
 
         <!-- Input Area -->
         <div class="border-t border-border-primary bg-surface-primary px-10 py-4">
-          <div class="flex flex-col gap-12">
+          <div class="flex flex-col gap-4">
             <div class="text-sm text-text-neutral"><span class="text-primary-green">|</span>Describe your thinking...</div>
-            <div class="flex justify-between items-center h-8">
-              <div class="flex items-center gap-3">
-                <button class="w-8 h-8 border border-border-primary bg-surface-primary flex items-center justify-center hover:border-primary-green transition-colors">
-                  <svg class="w-4.5 h-4.5" viewBox="0 0 18 18" fill="none" stroke="white" stroke-width="1"><path d="M9 6V12M6 9H12M16.5 9C16.5 13.1421 13.1421 16.5 9 16.5C4.85786 16.5 1.5 13.1421 1.5 9C1.5 4.85786 4.85786 1.5 9 1.5C13.1421 1.5 16.5 4.85786 16.5 9Z"/></svg>
-                </button>
-                <button class="px-2 py-2 border border-border-secondary text-sm text-text-white hover:border-primary-green transition-colors">Start New Chat</button>
+            <div class="flex gap-3">
+              <div class="flex-1 relative">
+                <input 
+                  v-model="chatInput" 
+                  @keypress.enter="sendChatMessage"
+                  :disabled="chatStore.isLoading"
+                  placeholder="Type your message here..."
+                  class="w-full px-4 py-3 bg-surface-primary border border-border-primary text-text-white placeholder-text-neutral text-sm focus:outline-none focus:border-primary-green"
+                />
               </div>
               <div class="flex items-center gap-3">
-                <button class="w-8 h-8 border border-border-primary bg-surface-primary flex items-center justify-center hover:border-primary-green transition-colors">
-                  <svg class="w-4.5 h-4.5" viewBox="0 0 18 18" fill="none" stroke="#444444" stroke-width="1"><path d="M13 7.72727V9C13 10.1814 12.5786 11.3144 11.8284 12.1498C11.0783 12.9852 10.0609 13.4545 9 13.4545M9 13.4545C7.93913 13.4545 6.92172 12.9852 6.17157 12.1498C5.42143 11.3144 5 10.1814 5 9V7.72727M9 13.4545V16M6.71429 16H11.2857M9 2C8.54534 2 8.10931 2.20114 7.78782 2.55916C7.46633 2.91718 7.28571 3.40277 7.28571 3.90909V9C7.28571 9.50632 7.46633 9.99191 7.78782 10.3499C8.10931 10.708 8.54534 10.9091 9 10.9091C9.45466 10.9091 9.89069 10.708 10.2122 10.3499C10.5337 9.99191 10.7143 9.50632 10.7143 9V3.90909C10.7143 3.40277 10.5337 2.91718 10.2122 2.55916C9.89069 2.20114 9.45466 2 9 2Z"/></svg>
+                <button 
+                  @click="startNewChat"
+                  class="px-4 py-3 border border-border-secondary text-sm text-text-white hover:border-primary-green transition-colors"
+                >
+                  New Chat
                 </button>
-                <button class="w-8 h-8 border border-primary-green bg-primary-green flex items-center justify-center hover:bg-primary-green/90 transition-colors">
-                  <svg class="w-4.5 h-4.5 fill-text-brand" viewBox="0 0 18 18"><path d="M3.86462 1.6764C2.43116 0.959877 0.93044 2.5247 1.70969 3.92695L3.89776 7.86431C4.03005 8.10237 4.28099 8.25 4.55334 8.25L9 8.25C9.41421 8.25 9.75 8.58579 9.75 9C9.75 9.41421 9.41421 9.75 9 9.75L4.55349 9.75C4.28115 9.75 4.03021 9.89763 3.89792 10.1357L1.70969 14.0733C0.930439 15.4756 2.43116 17.0404 3.86462 16.3239L15.5985 10.4587C16.8006 9.85778 16.8006 8.14251 15.5985 7.5416L3.86462 1.6764Z"/></svg>
+                <button class="w-10 h-10 border border-border-primary bg-surface-primary flex items-center justify-center hover:border-primary-green transition-colors">
+                  <svg class="w-4.5 h-4.5" viewBox="0 0 18 18" fill="none" stroke="#444444" stroke-width="1">
+                    <path d="M13 7.72727V9C13 10.1814 12.5786 11.3144 11.8284 12.1498C11.0783 12.9852 10.0609 13.4545 9 13.4545M9 13.4545C7.93913 13.4545 6.92172 12.9852 6.17157 12.1498C5.42143 11.3144 5 10.1814 5 9V7.72727M9 13.4545V16M6.71429 16H11.2857M9 2C8.54534 2 8.10931 2.20114 7.78782 2.55916C7.46633 2.91718 7.28571 3.40277 7.28571 3.90909V9C7.28571 9.50632 7.46633 9.99191 7.78782 10.3499C8.10931 10.708 8.54534 10.9091 9 10.9091C9.45466 10.9091 9.89069 10.708 10.2122 10.3499C10.5337 9.99191 10.7143 9.50632 10.7143 9V3.90909C10.7143 3.40277 10.5337 2.91718 10.2122 2.55916C9.89069 2.20114 9.45466 2 9 2Z"/>
+                  </svg>
+                </button>
+                <button 
+                  @click="sendChatMessage" 
+                  :disabled="!chatInput.trim() || chatStore.isLoading"
+                  class="w-10 h-10 border border-primary-green bg-primary-green flex items-center justify-center hover:bg-primary-green/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg v-if="!chatStore.isLoading" class="w-4.5 h-4.5 fill-text-brand" viewBox="0 0 18 18">
+                    <path d="M3.86462 1.6764C2.43116 0.959877 0.93044 2.5247 1.70969 3.92695L3.89776 7.86431C4.03005 8.10237 4.28099 8.25 4.55334 8.25L9 8.25C9.41421 8.25 9.75 8.58579 9.75 9C9.75 9.41421 9.41421 9.75 9 9.75L4.55349 9.75C4.28115 9.75 4.03021 9.89763 3.89792 10.1357L1.70969 14.0733C0.930439 15.4756 2.43116 17.0404 3.86462 16.3239L15.5985 10.4587C16.8006 9.85778 16.8006 8.14251 15.5985 7.5416L3.86462 1.6764Z"/>
+                  </svg>
+                  <div v-else class="w-4 h-4 border-2 border-text-brand border-t-transparent rounded-full animate-spin"></div>
                 </button>
               </div>
+            </div>
+            <div v-if="chatStore.error" class="text-red-400 text-sm">
+              {{ chatStore.error }}
             </div>
           </div>
         </div>
