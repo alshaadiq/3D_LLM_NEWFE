@@ -1,6 +1,6 @@
-# fusion-vue-tailwind-starter
+# 3D LLM New Frontend
 
-This template should help get you started developing with Vue 3 in Vite.
+A modern Vue 3 + TypeScript + Tailwind CSS frontend for the 3D LLM project.
 
 ## Recommended IDE Setup
 
