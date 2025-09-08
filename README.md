@@ -27,13 +27,15 @@ npm run dev
 ```
 
 ### Access the Application
-- **Frontend**: http://localhost:5173
+- **Frontend**: http://localhost:3000
 - **Backend API**: http://127.0.0.1:8000
 - **API Docs**: http://127.0.0.1:8000/docs
 
 ## 🔐 Demo Login
 
 Use these credentials to test the application:
+### 🔐 Demo Access
+- **URL**: http://localhost:3000
 - **Username**: `demo`
 - **Password**: `password`
 

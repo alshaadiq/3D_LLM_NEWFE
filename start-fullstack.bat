@@ -18,7 +18,7 @@ start "3D LLM Frontend" cmd /k "npm run dev"
 echo.
 echo ✅ Both servers are starting...
 echo 🔧 Backend API: http://127.0.0.1:8000
-echo 🌐 Frontend App: http://localhost:5173
+echo 🌐 Frontend App: http://localhost:3000
 echo.
 echo Press any key to exit this launcher...
 pause > nul
