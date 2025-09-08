@@ -1,23 +1,10 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { useAuthStore } from '@/stores/authStore'
-import LoginForm from '@/components/LoginForm.vue'
-import ChatInterface from '@/components/ChatInterface.vue'
-
-// Store
-const authStore = useAuthStore()
-
-// Initialize authentication on app load
-onMounted(async () => {
-  await authStore.checkAuth()
-})
+import DesignSystemDemo from '@/components/DesignSystemDemo.vue'
 </script>
 
 <template>
   <div id="app">
-    <!-- Authentication Check -->
-    <LoginForm v-if="!authStore.isAuthenticated" />
-    <ChatInterface v-else />
+    <DesignSystemDemo />
   </div>
 </template>
 

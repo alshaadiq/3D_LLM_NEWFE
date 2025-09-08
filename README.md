@@ -1,6 +1,18 @@
 # 3D LLM Frontend (NEWFE) - Integrated with Backend
 
-A modern Vue 3 + TypeScript frontend that integrates with the 3D_LLM_BE backend to provide a complete AI assistant experience with document processing, chat functionality, and AETOS platform function calling.
+A modern Vue 3 + Typ```
+Frontend (Vue 3 + TypeScript)
+├── 💬 Chat Management
+├── 📄 Document Processing
+├── 🔧 Function Calling
+└── 🎨 Design System
+
+Backend (FastAPI + Python)
+├── 💾 MongoDB Database
+├── 🧮 FAISS Vector Store
+├── 🤖 OpenAI Integration
+└── 🛰️ AETOS Platform
+```d that integrates with the 3D_LLM_BE backend to provide a complete AI assistant experience with document processing, chat functionality, and AETOS platform function calling.
 
 ## 🚀 Quick Start
 
@@ -30,14 +42,6 @@ npm run dev
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://127.0.0.1:8000
 - **API Docs**: http://127.0.0.1:8000/docs
-
-## 🔐 Demo Login
-
-Use these credentials to test the application:
-### 🔐 Demo Access
-- **URL**: http://localhost:3000
-- **Username**: `demo`
-- **Password**: `password`
 
 ## ✨ Features
 
@@ -101,12 +105,10 @@ Backend (FastAPI + Python)
 src/
 ├── components/           # Vue components
 │   ├── ChatInterface.vue    # Main chat interface
-│   ├── LoginForm.vue        # Authentication form
 │   └── ui/                  # Reusable UI components
 ├── composables/          # API integration
 │   └── useBackendApi.ts     # Complete backend API wrapper
 ├── stores/              # Pinia state management
-│   ├── authStore.ts         # Authentication state
 │   ├── chatStore.ts         # Chat management
 │   ├── documentStore.ts     # Document handling
 │   └── functionStore.ts     # Function calling
@@ -197,7 +199,6 @@ Agent: 🤖 I'll help you find satellite images of New York.
 
 The frontend integrates with all backend endpoints:
 
-- **Authentication**: Login, logout, token validation
 - **Chat Management**: Create, load, delete chats and messages
 - **Document Processing**: Upload, search, manage documents
 - **Function Calling**: Discover, execute AETOS platform functions
@@ -224,7 +225,7 @@ See `INTEGRATION_GUIDE.md` for detailed API documentation.
 3. **Authentication Failures**
    ```
    Error: 401 Unauthorized
-   Solution: Verify demo credentials or check token validity
+   Solution: Check backend token configuration
    ```
 
 ### Debug Mode

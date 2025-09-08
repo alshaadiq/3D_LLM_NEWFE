@@ -33,8 +33,8 @@
         
         <div class="flex items-center space-x-4">
           <!-- User info -->
-          <div v-if="authStore.isAuthenticated" class="text-sm text-surface-300">
-            👤 {{ authStore.userName }}
+          <div class="text-sm text-surface-300">
+            👤 Demo User
           </div>
           
           <!-- Document upload -->
@@ -67,11 +67,11 @@
           
           <!-- Logout -->
           <button
-            @click="logout"
+            @click="() => {}"
             class="flex items-center space-x-2 px-3 py-2 bg-surface-800 hover:bg-surface-700 rounded-md transition-colors"
           >
-            <span>🚪</span>
-            <span>Logout</span>
+            <span>ℹ️</span>
+            <span>Info</span>
           </button>
         </div>
       </div>
@@ -120,17 +120,8 @@
 
       <!-- Main Chat Area -->
       <div class="flex-1 flex flex-col">
-        <!-- Loading State -->
-        <div v-if="!authStore.isAuthenticated" class="flex-1 flex items-center justify-center">
-          <div class="text-center">
-            <div class="text-6xl mb-4">🔐</div>
-            <h2 class="text-2xl font-bold mb-2">Authentication Required</h2>
-            <p class="text-surface-400">Please log in to access the 3D LLM Assistant</p>
-          </div>
-        </div>
-        
         <!-- No Chat Selected -->
-        <div v-else-if="!chatStore.hasChatSelected" class="flex-1 flex items-center justify-center">
+        <div v-if="!chatStore.hasChatSelected" class="flex-1 flex items-center justify-center">
           <div class="text-center">
             <div class="text-6xl mb-4">💬</div>
             <h2 class="text-2xl font-bold mb-2">Welcome to 3D LLM Assistant</h2>
@@ -145,7 +136,7 @@
         </div>
         
         <!-- Chat Messages -->
-        <div v-else class="flex-1 flex flex-col">
+        <div v-if="chatStore.hasChatSelected" class="flex-1 flex flex-col">
           <!-- Messages Container -->
           <div ref="messagesContainer" class="flex-1 overflow-y-auto p-6 space-y-4">
             <div
@@ -249,12 +240,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick, computed } from 'vue'
-import { useAuthStore } from '@/stores/authStore'
 import { useChatStore } from '@/stores/chatStore'
 import { useDocumentStore } from '@/stores/documentStore'
 
 // Store instances
-const authStore = useAuthStore()
 const chatStore = useChatStore()
 const documentStore = useDocumentStore()
 
@@ -265,7 +254,7 @@ const fileInput = ref<HTMLInputElement>()
 
 // Error handling
 const error = computed(() => {
-  return chatStore.error || documentStore.error || authStore.error
+  return chatStore.error || documentStore.error
 })
 
 const clearError = () => {
@@ -275,10 +264,7 @@ const clearError = () => {
 
 // Initialize
 onMounted(async () => {
-  await authStore.checkAuth()
-  if (authStore.isAuthenticated) {
-    await documentStore.loadDocuments()
-  }
+  await documentStore.loadDocuments()
 })
 
 // Chat methods
@@ -330,15 +316,10 @@ const handleFileUpload = async (event: Event) => {
   }
 }
 
-// Auth methods
-const logout = async () => {
-  try {
-    await authStore.logout()
-    chatStore.clearCurrentChat()
-  } catch (err) {
-    console.error('Logout failed:', err)
-  }
-}
+// Auth methods - removed since no authentication needed
+// const logout = async () => {
+//   // No logout needed
+// }
 
 // Utility methods
 const scrollToBottom = async () => {

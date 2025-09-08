@@ -86,8 +86,8 @@ export const useBackendApi = () => {
 
   // Request interceptor to add auth token
   api.interceptors.request.use((config) => {
-    // Get token from localStorage or use fallback
-    const token = localStorage.getItem('auth_token') || fallbackToken
+    // Always use fallback token since no authentication needed
+    const token = fallbackToken
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
@@ -112,13 +112,7 @@ export const useBackendApi = () => {
         method: error.config?.method
       })
 
-      // Handle 401 Unauthorized
-      if (error.response?.status === 401) {
-        localStorage.removeItem('auth_token')
-        localStorage.removeItem('auth_user')
-        // Could redirect to login page here
-      }
-
+      // Don't handle 401 since no authentication needed
       throw error
     }
   )
