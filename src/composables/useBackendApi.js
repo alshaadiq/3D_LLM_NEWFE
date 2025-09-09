@@ -18,7 +18,17 @@ api.interceptors.request.use(
   (config) => {
     // Use fixed token for now
     const token = 'secret-token'
-    config.headers.Authorization = `Bearer ${token}`
+    
+    // Don't override headers if they're already set for FormData
+    if (!config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    
+    // For FormData uploads, don't set Content-Type - let browser handle it
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type']
+    }
+    
     return config
   },
   (error) => Promise.reject(error)
@@ -184,44 +194,112 @@ export function useBackendApi() {
   // Document endpoints
   const documents = {
     async uploadDocument(file, onProgress = null) {
-      loading.value = true
-      error.value = null
       try {
+        console.log('Starting upload for:', file.name)
+        console.log('File details:', {
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          lastModified: file.lastModified
+        })
+        
+        // Create FormData exactly like the working 3D_LLM_FE implementation
         const formData = new FormData()
         formData.append('file', file)
-
-        const config = {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
+        
+        // Debug: log what's in FormData
+        console.log('FormData entries:')
+        for (let [key, value] of formData.entries()) {
+          console.log(`${key}:`, value)
+          if (value instanceof File) {
+            console.log(`  File name: ${value.name}`)
+            console.log(`  File size: ${value.size}`)
+            console.log(`  File type: ${value.type}`)
+          }
         }
-
+        
+        // Simple config like the working version - don't override Content-Type
+        const config = {
+          timeout: 60000,
+          // Explicitly ensure headers don't interfere with FormData
+          headers: {}
+        }
+        
+        // Add progress tracking if provided
         if (onProgress) {
           config.onUploadProgress = (progressEvent) => {
             const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total)
             onProgress(progress)
           }
         }
-
+        
+        console.log('Upload config:', config)
+        console.log('Uploading to:', `${api.defaults.baseURL}/documents/upload`)
+        
+        // Use the axios instance directly like other endpoints
         const response = await api.post('/documents/upload', formData, config)
+        
+        console.log('Upload response:', response.data)
         return response.data
-      } catch (err) {
-        error.value = err.response?.data?.detail || 'Failed to upload document'
-        throw err
-      } finally {
-        loading.value = false
+        
+      } catch (error) {
+        console.error('Upload error details:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          config: error.config
+        })
+        
+        // Handle specific error cases like the working implementation
+        if (error.response?.status === 401) {
+          throw new Error('Authentication failed. Please check your credentials.')
+        } else if (error.response?.status === 413) {
+          throw new Error('File too large. Please choose a smaller file.')
+        } else if (error.response?.status === 422) {
+          // Handle validation errors properly
+          let detail = 'Invalid file format or validation error'
+          if (error.response?.data?.detail) {
+            if (Array.isArray(error.response.data.detail)) {
+              // Extract validation error messages
+              detail = error.response.data.detail.map(err => {
+                if (typeof err === 'string') return err
+                if (err.msg) return err.msg
+                if (err.message) return err.message
+                return JSON.stringify(err)
+              }).join(', ')
+            } else if (typeof error.response.data.detail === 'string') {
+              detail = error.response.data.detail
+            } else {
+              detail = JSON.stringify(error.response.data.detail)
+            }
+          }
+          console.error('422 Validation error details:', error.response.data)
+          console.error('Extracted detail:', detail)
+          throw new Error(detail)
+        } else if (error.response?.status >= 500) {
+          throw new Error('Server error. Please try again later.')
+        } else if (error.code === 'ERR_NETWORK') {
+          throw new Error('Network error. Please check your connection and try again.')
+        }
+        
+        // Re-throw the original error if no specific handling
+        throw error
       }
     },
 
     async getDocuments() {
       try {
-        // Backend may not have a direct documents list endpoint
-        // Return empty array for now to avoid 403/404 errors
-        return []
+        const response = await api.get('/documents')
+        return response.data
       } catch (err) {
-        // Don't throw error, just return empty array
-        console.warn('Documents endpoint not available:', err.message)
-        return []
+        // Don't throw error for connection issues, just return empty array
+        if (err.code === 'ERR_NETWORK' || err.code === 'ECONNREFUSED' || 
+            err.response?.status === 403 || err.response?.status === 404) {
+          console.warn('Documents endpoint not available, starting with empty state')
+          return []
+        }
+        error.value = err.response?.data?.detail || 'Failed to get documents'
+        throw err
       }
     },
 
@@ -251,6 +329,16 @@ export function useBackendApi() {
         return response.data
       } catch (err) {
         error.value = err.response?.data?.detail || 'Failed to search documents'
+        throw err
+      }
+    },
+
+    async getDocumentChunks(documentId) {
+      try {
+        const response = await api.get(`/documents/${documentId}/chunks`)
+        return response.data
+      } catch (err) {
+        error.value = err.response?.data?.detail || 'Failed to get document chunks'
         throw err
       }
     }

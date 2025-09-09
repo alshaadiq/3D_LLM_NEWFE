@@ -44,57 +44,359 @@ interface UploadItem {
   size: string
   progress: number // 0..100
   status: 'pending' | 'success' | 'failed'
+  error?: string
 }
 
 interface DocPage { id: string; src: string }
-interface DocItem { id: string; name: string; size: string; pages: DocPage[] }
+interface DocItem { 
+  id: string; 
+  name: string; 
+  size: string; 
+  pages: DocPage[];
+  filename: string;
+  content_type: string;
+  file_size: number;
+  upload_date: string;
+  status: 'processing' | 'completed' | 'failed';
+}
 
 const showUploadModal = ref(false)
-const uploadItems = ref<UploadItem[]>([
-  { id: 'u1', name: 'File name', size: '12 MB', progress: 100, status: 'success' },
-  { id: 'u2', name: 'File name', size: '12 MB', progress: 47, status: 'pending' },
-  { id: 'u3', name: 'File name', size: '12 MB', progress: 38, status: 'failed' },
-])
+const uploadItems = ref<UploadItem[]>([])
+const selectedFiles = ref<File[]>([])
+const dragCounter = ref(0)
+const isDragging = ref(false)
+const fileInput = ref<HTMLInputElement>()
 
-const docs = ref<DocItem[]>([])
-const hasDocs = computed(() => docs.value.length > 0)
+// Use real document store
+const realDocs = computed(() => {
+  console.log('realDocs computed:', documentStore.documents.length, 'documents')
+  return documentStore.documents.map(doc => ({
+    id: doc.id,
+    name: doc.filename,
+    size: documentStore.formatFileSize(doc.file_size),
+    filename: doc.filename,
+    content_type: doc.content_type,
+    file_size: doc.file_size,
+    upload_date: doc.upload_date,
+    status: doc.status,
+    pages: [] // Will be populated when document viewer is implemented
+  }))
+})
+
+const hasDocs = computed(() => {
+  const hasDocuments = realDocs.value.length > 0
+  console.log('hasDocs computed:', hasDocuments, 'realDocs length:', realDocs.value.length)
+  return hasDocuments
+})
 const selectedDocIndex = ref(0)
 
-const samplePages: DocPage[] = [
-  { id: 'p1', src: 'https://api.builder.io/api/v1/image/assets/TEMP/9b035dce95b5eb1d6c623560ffd96eba34583262?width=1384' },
-  { id: 'p2', src: 'https://api.builder.io/api/v1/image/assets/TEMP/19ab7c5495ce5fdfa7186ca8ac9504157cd45f75?width=1384' },
-  { id: 'p3', src: 'https://api.builder.io/api/v1/image/assets/TEMP/0a019a6610f3c1dd0f929ba5e5b86ebe28a08427?width=1384' },
-]
+// Document viewer state
+const documentContent = ref('')
+const loadingDocumentContent = ref(false)
+
+const currentDoc = computed(() => realDocs.value[selectedDocIndex.value])
+
+// Initialize document store on mount
+onMounted(async () => {
+  console.log('App mounted, loading documents...')
+  try {
+    await documentStore.loadDocuments()
+    console.log('Documents loaded:', documentStore.documents.length)
+  } catch (error) {
+    console.error('Error loading documents:', error)
+  }
+})
+
+// Watch for document changes
+watch(() => documentStore.documents, (newDocs) => {
+  console.log('Documents changed:', newDocs.length, 'documents')
+}, { immediate: true, deep: true })
 
 function openUploadModal() {
   showUploadModal.value = true
+  uploadItems.value = []
+  selectedFiles.value = []
 }
 
 function closeUploadModal() {
   showUploadModal.value = false
+  uploadItems.value = []
+  selectedFiles.value = []
+  isDragging.value = false
+  dragCounter.value = 0
 }
 
-function confirmUpload() {
-  // UI-only: create a sample document from successful uploads
-  const successes = uploadItems.value.filter((u) => u.status === 'success')
-  if (successes.length) {
-    docs.value = successes.map((s, i) => ({
-      id: `d${i + 1}`,
-      name: `${s.name} 5466 TNMJ....pdf`,
-      size: s.size,
-      pages: samplePages,
-    }))
-    selectedDocIndex.value = 0
+// Document viewer functions
+async function loadDocumentContent(documentId: string) {
+  console.log('Starting loadDocumentContent for ID:', documentId)
+  loadingDocumentContent.value = true
+  documentContent.value = ''
+  
+  try {
+    // Import the useBackendApi to access API methods
+    const { useBackendApi } = await import('./composables/useBackendApi.js')
+    const api = useBackendApi()
+    console.log('API initialized:', api)
+    
+    try {
+      // Try to get document chunks directly via axios
+      console.log('Attempting to fetch chunks for document:', documentId)
+      const chunksResponse = await (api as any).api.get(`/documents/${documentId}/chunks`)
+      console.log('Chunks response:', chunksResponse)
+      const chunks = chunksResponse.data
+      console.log('Chunks data:', chunks)
+      
+      if (chunks && chunks.length > 0) {
+        console.log('Processing chunks:', chunks)
+        console.log('First chunk structure:', chunks[0])
+        
+        // Try different possible content field names
+        let content = ''
+        for (let i = 0; i < chunks.length; i++) {
+          const chunk = chunks[i]
+          console.log(`Chunk ${i}:`, chunk)
+          
+          // Try different possible field names for content
+          let chunkContent = chunk.content || chunk.text || chunk.chunk_content || chunk.data || ''
+          
+          // If still empty, try to extract from nested objects
+          if (!chunkContent && typeof chunk === 'object') {
+            console.log(`Chunk ${i} keys:`, Object.keys(chunk))
+            // Try common nested structures
+            chunkContent = chunk.metadata?.content || chunk.page_content || chunk.document_content || ''
+          }
+          
+          console.log(`Chunk ${i} content:`, chunkContent ? `"${chunkContent.substring(0, 100)}..."` : 'EMPTY')
+          
+          if (chunkContent) {
+            content += (content ? '\n\n' : '') + chunkContent
+          }
+        }
+        
+        console.log('Combined content length:', content.length)
+        console.log('Combined content preview:', content ? `"${content.substring(0, 200)}..."` : 'EMPTY CONTENT')
+        
+        if (content.trim()) {
+          documentContent.value = content
+          return
+        } else {
+          console.log('All chunks appear to be empty')
+        }
+      } else {
+        console.log('No chunks available, length:', chunks?.length)
+      }
+    } catch (chunkError: any) {
+      console.warn('Document chunks not available:', chunkError)
+      console.warn('Error details:', {
+        message: chunkError?.message,
+        status: chunkError?.response?.status,
+        data: chunkError?.response?.data
+      })
+      
+      // If chunks endpoint fails, try alternative endpoint
+      try {
+        console.log('Trying alternative document content endpoint...')
+        const contentResponse = await (api as any).api.get(`/documents/${documentId}/content`)
+        console.log('Content response:', contentResponse)
+        if (contentResponse.data) {
+          documentContent.value = contentResponse.data
+          return
+        }
+      } catch (contentError) {
+        console.warn('Alternative content endpoint also failed:', contentError)
+      }
+    }
+    
+    // Fallback: Show document info
+    console.log('Loading document info as fallback')
+    const docInfo = await api.documents.getDocument(documentId)
+    console.log('Document info:', docInfo)
+    documentContent.value = `Document: ${docInfo.filename}\nSize: ${(docInfo.file_size / 1024).toFixed(1)} KB\nType: ${docInfo.content_type}\nStatus: ${docInfo.status}\n\nDocument content preview is not available yet.\nThe document has been processed and can be used in chat conversations.`
+    
+  } catch (error: any) {
+    console.error('Error loading document content:', error)
+    documentContent.value = 'Error loading document content. Please try again.'
+  } finally {
+    loadingDocumentContent.value = false
+    console.log('Final document content:', documentContent.value)
   }
-  closeUploadModal()
 }
 
-function deleteDoc(idx: number) {
-  docs.value.splice(idx, 1)
-  if (selectedDocIndex.value >= docs.value.length) selectedDocIndex.value = Math.max(0, docs.value.length - 1)
+// Load content for current document in the viewer
+async function loadDocumentContentForCurrent() {
+  console.log('Loading content for current document:', currentDoc.value)
+  if (currentDoc.value?.id) {
+    console.log('Document ID:', currentDoc.value.id)
+    await loadDocumentContent(currentDoc.value.id)
+  } else {
+    console.error('No current document or document ID')
+  }
 }
 
-const currentDoc = computed(() => docs.value[selectedDocIndex.value])
+// Helper function to get document type styling
+function getDocumentTypeClass(contentType: string) {
+  if (contentType?.includes('pdf')) {
+    return 'bg-red-500/20 text-red-400'
+  } else if (contentType?.includes('text')) {
+    return 'bg-blue-500/20 text-blue-400'
+  } else if (contentType?.includes('word')) {
+    return 'bg-blue-600/20 text-blue-500'
+  } else {
+    return 'bg-gray-500/20 text-gray-400'
+  }
+}
+
+// File handling functions
+function handleFileSelect(event: Event) {
+  const target = event.target as HTMLInputElement
+  if (target.files) {
+    addFiles(Array.from(target.files))
+  }
+}
+
+function handleDrop(event: DragEvent) {
+  event.preventDefault()
+  isDragging.value = false
+  dragCounter.value = 0
+  
+  if (event.dataTransfer?.files) {
+    addFiles(Array.from(event.dataTransfer.files))
+  }
+}
+
+function handleDragOver(event: DragEvent) {
+  event.preventDefault()
+}
+
+function handleDragEnter(event: DragEvent) {
+  event.preventDefault()
+  dragCounter.value++
+  isDragging.value = true
+}
+
+function handleDragLeave(event: DragEvent) {
+  event.preventDefault()
+  dragCounter.value--
+  if (dragCounter.value === 0) {
+    isDragging.value = false
+  }
+}
+
+function addFiles(files: File[]) {
+  // Filter for supported file types
+  const supportedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword', 'text/plain', 'text/markdown']
+  const validFiles = files.filter(file => supportedTypes.includes(file.type) || file.name.endsWith('.txt') || file.name.endsWith('.md'))
+  
+  if (validFiles.length !== files.length) {
+    // Show warning for unsupported files
+    console.warn('Some files were skipped due to unsupported format')
+  }
+  
+  // Add valid files to selection
+  selectedFiles.value = [...selectedFiles.value, ...validFiles]
+  
+  // Create upload items for display
+  validFiles.forEach(file => {
+    const uploadItem: UploadItem = {
+      id: `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: file.name,
+      size: formatFileSize(file.size),
+      progress: 0,
+      status: 'pending'
+    }
+    uploadItems.value.push(uploadItem)
+  })
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
+function removeFile(index: number) {
+  selectedFiles.value.splice(index, 1)
+  uploadItems.value.splice(index, 1)
+}
+
+async function confirmUpload() {
+  if (selectedFiles.value.length === 0) return
+  
+  // Set uploading status for all files
+  uploadItems.value.forEach(item => {
+    item.status = 'pending'
+    item.progress = 0
+  })
+  
+  let successCount = 0
+  let failedCount = 0
+  
+  try {
+    // Upload files one by one using document store
+    for (let i = 0; i < selectedFiles.value.length; i++) {
+      const file = selectedFiles.value[i]
+      const uploadItem = uploadItems.value[i]
+      
+      try {
+        console.log(`Uploading file: ${file.name}`)
+        
+        // Update status to show upload in progress
+        uploadItem.status = 'pending'
+        uploadItem.progress = 10
+        
+        // Use document store's upload method which handles FormData properly
+        const result = await documentStore.uploadDocument(file)
+        console.log(`Upload result for ${file.name}:`, result)
+        
+        uploadItem.status = 'success'
+        uploadItem.progress = 100
+        successCount++
+        
+      } catch (error: any) {
+        console.error(`Error uploading ${file.name}:`, error)
+        uploadItem.status = 'failed'
+        
+        // Extract error message 
+        let errorMessage = 'Upload failed'
+        if (error?.response?.data?.detail) {
+          errorMessage = error.response.data.detail
+        } else if (error?.data?.detail) {
+          errorMessage = error.data.detail
+        } else if (error?.message) {
+          errorMessage = error.message
+        }
+        
+        uploadItem.error = errorMessage
+        failedCount++
+      }
+    }
+    
+    console.log(`Upload completed: ${successCount}/${selectedFiles.value.length} files`)
+    
+    // Close modal after delay if all succeeded
+    if (successCount === selectedFiles.value.length) {
+      setTimeout(() => {
+        closeUploadModal()
+      }, 2000)
+    }
+    
+  } catch (error) {
+    console.error('Upload error:', error)
+  }
+}
+
+function deleteDoc(index: number) {
+  const doc = realDocs.value[index]
+  if (doc && confirm(`Are you sure you want to delete "${doc.filename}"?`)) {
+    documentStore.deleteDocument(doc.id)
+  }
+}
+
+function triggerFileInput() {
+  fileInput.value?.click()
+}
 
 // Function to get conversation title from first user message
 const getConversationTitle = (conversation: any) => {
@@ -171,7 +473,7 @@ watch(selectedMode, (newMode) => {
         <!-- Document -->
         <button
           class="flex h-14 items-center gap-2 px-3 group"
-          :class="activeTab === 'document' ? 'bg-opacity-100 bg-opacity-5' : ''"
+          :class="activeTab === 'document' ? 'bg-white bg-opacity-10' : ''"
           @click="activeTab = 'document'"
         >
           <div class="flex items-center gap-2">
@@ -259,7 +561,7 @@ watch(selectedMode, (newMode) => {
     <!-- Content columns vary per tab -->
 
     <!-- Left column (340px) -->
-    <div class="bg-surface-primary border-r border-border-primary border-t border-border-primary flex flex-col overflow-hidden h-full">
+    <div class="bg-surface-primary border-r border-t border-border-primary flex flex-col overflow-hidden h-full">
       <!-- Assistant: search + empty chat list -->
       <template v-if="activeTab === 'assistant'">
         <div class="p-5 border-b border-border-primary flex-shrink-0">
@@ -325,22 +627,40 @@ watch(selectedMode, (newMode) => {
         <div v-if="!hasDocs" class="flex-1 flex flex-col items-center justify-center gap-3 px-6">
           <svg class="w-12 h-12 text-text-neutral" viewBox="0 0 48 48" fill="none" stroke="#71717A" stroke-width="2"><path d="M42 14H36C34.9391 14 33.9217 13.5786 33.1716 12.8284C32.4214 12.0783 32 11.0609 32 10V4M14 16V33.6C14 34.2 14.4 34.8 14.8 35.2C15.2 35.6 15.8 36 16.4 36H30M6 24V41.6C6 42.2 6.4 42.8 6.8 43.2C7.2 43.6 7.8 44 8.4 44H22M42 12V25C42 26.6 40.6 28 39 28H25C23.4 28 22 26.6 22 25V7C22 5.4 23.4 4 25 4H34L42 12Z"/></svg>
           <span class="text-base text-text-tertiary">No document yet</span>
+          <button 
+            @click="documentStore.loadDocuments()" 
+            class="px-3 py-1 text-xs border border-border-primary text-text-white hover:border-primary-green"
+          >
+            Refresh (Debug)
+          </button>
         </div>
         <div v-else class="flex-1 overflow-auto">
-          <div class="px-4 py-4 text-text-neutral">HISTORY</div>
+          <div class="px-4 py-4 text-text-neutral">HISTORY ({{ realDocs.length }} documents)</div>
           <div class="flex flex-col divide-y divide-border-primary">
-            <div v-for="(d, idx) in docs" :key="d.id" class="flex items-center gap-3 px-4 py-4 hover:bg-surface-secondary cursor-pointer" @click="selectedDocIndex = idx">
+            <div v-for="(d, idx) in realDocs" :key="d.id" class="flex items-center gap-3 px-4 py-4 hover:bg-surface-secondary cursor-pointer" 
+                 @click="selectedDocIndex = idx">
               <div class="w-10 h-10 flex items-center justify-center">
-                <div class="w-6 h-8 bg-text-neutral/50"></div>
+                <div class="w-8 h-10 rounded flex items-center justify-center" :class="getDocumentTypeClass(d.content_type)">
+                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                    <path v-if="d.content_type?.includes('pdf')" d="M12,2A3,3 0 0,1 15,5V7H19A2,2 0 0,1 21,9V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V9A2,2 0 0,1 5,7H9V5A3,3 0 0,1 12,2M12,4A1,1 0 0,0 11,5V7H13V5A1,1 0 0,0 12,4Z"/>
+                    <path v-else-if="d.content_type?.includes('text')" d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                    <path v-else-if="d.content_type?.includes('word')" d="M6,2A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2H6M6,4H13V9H18V20H6V4Z"/>
+                    <path v-else d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                  </svg>
+                </div>
               </div>
               <div class="flex-1">
                 <div class="text-base text-text-white">{{ d.name }}</div>
                 <div class="text-sm text-text-neutral">{{ d.size }}</div>
+                <div class="text-xs text-text-neutral">{{ d.status }}</div>
               </div>
               <button class="w-5 h-5" @click.stop="deleteDoc(idx)">
                 <svg viewBox="0 0 20 20" fill="none" stroke="white"><path d="M2.5 5H17.5M15.833 5V16.667C15.833 17.5 15 18.333 14.167 18.333H5.833C5 18.333 4.167 17.5 4.167 16.667V5M6.667 5V3.333C6.667 2.5 7.5 1.667 8.333 1.667H11.667C12.5 1.667 13.333 2.5 13.333 3.333V5M8.333 9.167V14.167M11.667 9.167V14.167" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </button>
             </div>
+          </div>
+          <div class="px-4 py-2 text-xs text-text-neutral">
+            Debug: Store docs: {{ documentStore.documents.length }}, Loading: {{ documentStore.isLoading }}
           </div>
         </div>
       </template>
@@ -542,22 +862,86 @@ watch(selectedMode, (newMode) => {
           </div>
         </div>
         <div v-else class="flex-1 grid grid-cols-[150px_1fr]">
-          <!-- Thumbnails -->
+          <!-- Document Info -->
           <div class="border-r border-border-primary overflow-auto p-4">
-            <div v-for="(p, i) in currentDoc?.pages || []" :key="p.id" class="mb-4">
-              <img :src="p.src" :alt="`Page ${i+1}`" class="rounded w-full object-cover" />
-              <div class="text-sm text-text-white mt-1">{{ i + 1 }}</div>
+            <div v-if="currentDoc" class="space-y-4">
+              <div class="text-sm text-text-white font-medium">{{ currentDoc.filename }}</div>
+              <div class="text-xs text-text-neutral">{{ currentDoc.size }}</div>
+              <div class="text-xs text-text-neutral">{{ currentDoc.content_type }}</div>
+              <div class="text-xs" :class="currentDoc.status === 'completed' ? 'text-primary-green' : currentDoc.status === 'failed' ? 'text-red-400' : 'text-yellow-400'">
+                {{ currentDoc.status === 'completed' ? 'Processed' : currentDoc.status === 'failed' ? 'Failed' : 'Processing...' }}
+              </div>
             </div>
           </div>
-          <!-- Viewer -->
-          <div class="w-full h-full overflow-auto p-6">
-            <img v-for="p in currentDoc?.pages || []" :key="p.id" :src="p.src" class="w-full mb-6 rounded" />
+          <!-- Document Content Viewer -->
+          <div class="w-full h-full overflow-auto flex flex-col">
+            <!-- Document Header -->
+            <div class="flex items-center justify-between p-4 border-b border-border-primary bg-surface-secondary">
+              <div class="flex items-center gap-3">
+                <div class="w-6 h-6 rounded flex items-center justify-center" :class="getDocumentTypeClass(currentDoc?.content_type)">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path v-if="currentDoc?.content_type?.includes('pdf')" d="M12,2A3,3 0 0,1 15,5V7H19A2,2 0 0,1 21,9V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V9A2,2 0 0,1 5,7H9V5A3,3 0 0,1 12,2M12,4A1,1 0 0,0 11,5V7H13V5A1,1 0 0,0 12,4Z"/>
+                    <path v-else-if="currentDoc?.content_type?.includes('text')" d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                    <path v-else-if="currentDoc?.content_type?.includes('word')" d="M6,2A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2H6M6,4H13V9H18V20H6V4Z"/>
+                    <path v-else d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 class="text-base font-medium text-text-white">{{ currentDoc?.filename || 'No Document Selected' }}</h3>
+                  <div class="text-xs text-text-neutral">{{ currentDoc?.size }} • {{ currentDoc?.content_type }}</div>
+                </div>
+              </div>
+              <button 
+                v-if="currentDoc && currentDoc.status === 'completed'" 
+                class="px-3 py-1 text-xs bg-primary-green/20 text-primary-green rounded hover:bg-primary-green/30 transition-colors"
+                @click="loadDocumentContentForCurrent()"
+              >
+                Load Content
+              </button>
+            </div>
+            
+            <!-- Document Content -->
+            <div class="flex-1 overflow-hidden">
+              <div v-if="!currentDoc" class="flex items-center justify-center h-full">
+                <div class="text-center text-text-neutral">
+                  <div class="text-lg mb-2">📄</div>
+                  <div>Select a document to view its content</div>
+                </div>
+              </div>
+              
+              <div v-else-if="currentDoc.status !== 'completed'" class="flex items-center justify-center h-full">
+                <div class="text-center text-text-neutral">
+                  <div class="text-lg mb-2">⏳</div>
+                  <div>Document is {{ currentDoc.status === 'processing' ? 'being processed' : 'not available' }}</div>
+                  <div class="text-sm mt-2">Status: {{ currentDoc.status }}</div>
+                </div>
+              </div>
+              
+              <div v-else-if="loadingDocumentContent" class="flex items-center justify-center h-full">
+                <div class="flex flex-col items-center gap-3">
+                  <div class="w-6 h-6 border-2 border-primary-green border-t-transparent rounded-full animate-spin"></div>
+                  <span class="text-text-neutral text-sm">Loading document content...</span>
+                </div>
+              </div>
+              
+              <div v-else-if="documentContent" class="h-full overflow-y-auto scrollbar-thin p-4">
+                <pre class="whitespace-pre-wrap text-text-white text-sm leading-relaxed font-mono">{{ documentContent }}</pre>
+              </div>
+              
+              <div v-else class="flex items-center justify-center h-full">
+                <div class="text-center text-text-neutral">
+                  <div class="text-lg mb-2">📄</div>
+                  <div>Click "Load Content" to view document text</div>
+                  <div class="text-sm mt-2">{{ currentDoc?.filename }}</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- Upload Modal -->
         <div v-if="showUploadModal" class="fixed inset-0 z-50">
-          <div class="absolute inset-0 bg-black/80"></div>
+          <div class="absolute inset-0 bg-black/80" @click="closeUploadModal"></div>
           <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[640px] bg-surface-primary border border-border-primary">
             <div class="flex items-center justify-between px-6 py-4 border-b border-white/20">
               <div class="text-lg text-text-white">Upload Document</div>
@@ -566,40 +950,98 @@ watch(selectedMode, (newMode) => {
               </button>
             </div>
             <div class="p-6 flex flex-col gap-4 max-h-[480px] overflow-auto">
-              <div class="border border-dashed border-border-secondary bg-surface-secondary p-8 flex flex-col items-center gap-3">
+              <!-- Drop Area -->
+              <div 
+                class="border border-dashed border-border-secondary bg-surface-secondary p-8 flex flex-col items-center gap-3 cursor-pointer transition-colors"
+                :class="isDragging ? 'border-primary-green bg-primary-green/10' : 'hover:border-primary-green'"
+                @click="triggerFileInput"
+                @drop="handleDrop"
+                @dragover="handleDragOver"
+                @dragenter="handleDragEnter"
+                @dragleave="handleDragLeave"
+              >
                 <svg class="w-14 h-14" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M49 35V44.3333C49 45.571 48.5083 46.758 47.6332 47.6332C46.758 48.5083 45.571 49 44.3333 49H11.6667C10.429 49 9.242 48.5083 8.36683 47.6332C7.49167 46.758 7 45.571 7 44.3333V35M39.6667 18.6667L28 7M28 7L16.3333 18.6667M28 7V35" stroke="#BEF975" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                <div class="text-base text-text-white">Drag and drop AOI files here.</div>
+                <div class="text-base text-text-white text-center">
+                  <div>{{ isDragging ? 'Drop files here' : 'Drag and drop files here or click to browse' }}</div>
+                  <div class="text-sm text-text-neutral mt-1">Supports PDF, DOCX, TXT, MD files (max 10MB)</div>
+                </div>
               </div>
 
-              <div v-for="u in uploadItems" :key="u.id" class="border border-border-primary p-3 space-y-2">
-                <div class="flex items-center gap-2">
-                  <svg class="w-8 h-8" viewBox="0 0 32 32" fill="#B3B3B3"><path d="M26.92 8.865 19.71 1.645 19.56 1.5H7A2.5 2.5 0 0 0 4.5 4v24A2.5 2.5 0 0 0 7 30.5h18A2.5 2.5 0 0 0 27.5 28V8.94l-.58-.075ZM19.855 3.205l5.44 5.44H20.855a1.49 1.49 0 0 1-1.49-1.49V3.205Z"/></svg>
-                  <div class="flex-1">
-                    <div class="text-sm text-text-white">{{ u.name }}</div>
-                    <div class="text-xs text-text-neutral">{{ u.size }}</div>
+              <!-- Hidden file input -->
+              <input
+                ref="fileInput"
+                type="file"
+                multiple
+                accept=".pdf,.docx,.doc,.txt,.md"
+                @change="handleFileSelect"
+                class="hidden"
+              />
+
+              <!-- Upload Progress -->
+              <div v-if="uploadItems.length > 0">
+                <div v-for="(u, index) in uploadItems" :key="u.id" class="border border-border-primary p-3 space-y-2">
+                  <div class="flex items-center gap-2">
+                    <svg class="w-8 h-8" viewBox="0 0 32 32" fill="#B3B3B3"><path d="M26.92 8.865 19.71 1.645 19.56 1.5H7A2.5 2.5 0 0 0 4.5 4v24A2.5 2.5 0 0 0 7 30.5h18A2.5 2.5 0 0 0 27.5 28V8.94l-.58-.075ZM19.855 3.205l5.44 5.44H20.855a1.49 1.49 0 0 1-1.49-1.49V3.205Z"/></svg>
+                    <div class="flex-1">
+                      <div class="text-sm text-text-white">{{ u.name }}</div>
+                      <div class="text-xs text-text-neutral">{{ u.size }}</div>
+                      <div v-if="u.error" class="text-xs text-red-400 mt-1">{{ u.error }}</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <!-- Remove file button (only if not uploading) -->
+                      <button 
+                        v-if="u.status === 'pending' && u.progress === 0"
+                        @click="removeFile(index)"
+                        class="w-6 h-6 text-text-neutral hover:text-red-400"
+                      >
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.219 4.281a1 1 0 0 1 1.414 0L12 11.647l7.367-7.366a1 1 0 1 1 1.414 1.414L13.415 13.06l7.366 7.367a1 1 0 0 1-1.414 1.414L12 14.475l-7.367 7.366A1 1 0 0 1 3.219 20.427L10.586 13.06 3.219 5.695a1 1 0 0 1 0-1.414Z"/></svg>
+                      </button>
+                      <!-- Status icon -->
+                      <div class="w-4 h-4">
+                        <svg v-if="u.status==='success'" class="w-4 h-4 text-primary-green" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm-1.5 15L6 12.5l1.5-1.5 3 3 7-7L19 8.5l-8.5 8.5z"/></svg>
+                        <svg v-else-if="u.status==='failed'" class="w-4 h-4 text-red-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.5 11.5L15 15l-3-3-3 3-1.5-1.5 3-3-3-3L9 6l3 3 3-3 1.5 1.5-3 3 3 3z"/></svg>
+                        <div v-else-if="u.status==='pending' && u.progress > 0" class="w-4 h-4 border-2 border-primary-green border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    </div>
                   </div>
-                  <div class="w-4 h-4" v-if="u.status==='success'"></div>
-                </div>
-                <div class="relative h-4">
-                  <div class="absolute inset-y-1 left-0 right-0 bg-border-primary"></div>
-                  <div
-                    class="absolute inset-y-1 left-0"
-                    :class="u.status==='failed' ? 'bg-[rgb(210,43,40)]' : 'bg-text-brand'"
-                    :style="{ width: (u.status==='failed' ? Math.max(10, u.progress) : u.progress) + '%' }"
-                  ></div>
-                  <div class="absolute right-0 -top-4 text-xs" :class="u.status==='failed' ? 'text-[rgb(255,4,0)]' : 'text-primary-green'">
-                    {{ u.status==='failed' ? 'Failed' : u.progress + '%' }}
+                  <!-- Progress bar -->
+                  <div class="relative h-2">
+                    <div class="absolute inset-y-0 left-0 right-0 bg-border-primary rounded"></div>
+                    <div
+                      class="absolute inset-y-0 left-0 rounded transition-all duration-300"
+                      :class="u.status==='failed' ? 'bg-red-400' : 'bg-primary-green'"
+                      :style="{ width: (u.status==='failed' ? Math.max(10, u.progress) : u.progress) + '%' }"
+                    ></div>
+                    <div class="absolute right-0 -top-5 text-xs" :class="u.status==='failed' ? 'text-red-400' : 'text-primary-green'">
+                      {{ u.status==='failed' ? 'Failed' : u.status==='success' ? 'Complete' : u.progress + '%' }}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
             <div class="px-6 py-3 border-t border-white/20 flex items-center justify-between">
-              <div class="text-xs text-primary-green">Success 12/123</div>
-              <div class="flex items-center gap-3">
-                <button class="px-4 py-2 border border-border-default-teriary text-text-white">Cancel</button>
-                <button class="px-4 py-2 bg-primary-green text-text-brand" @click="confirmUpload">Confirm</button>
+              <div class="text-xs text-primary-green">
+                {{ uploadItems.filter(u => u.status === 'success').length > 0 ? `Success ${uploadItems.filter(u => u.status === 'success').length}/${uploadItems.length}` : '' }}
               </div>
-              <div class="text-xs text-[rgb(255,4,0)]">Failed 6/123</div>
+              <div class="flex items-center gap-3">
+                <button 
+                  class="px-4 py-2 border border-border-primary text-text-white hover:border-text-white transition-colors" 
+                  @click="closeUploadModal"
+                >
+                  Cancel
+                </button>
+                <button 
+                  v-if="selectedFiles.length > 0"
+                  class="px-4 py-2 bg-primary-green text-text-brand hover:bg-primary-green/90 transition-colors disabled:opacity-50" 
+                  @click="confirmUpload"
+                  :disabled="uploadItems.some(u => u.status === 'pending' && u.progress > 0)"
+                >
+                  {{ uploadItems.some(u => u.status === 'pending' && u.progress > 0) ? 'Uploading...' : `Upload ${selectedFiles.length} file(s)` }}
+                </button>
+              </div>
+              <div class="text-xs text-red-400">
+                {{ uploadItems.filter(u => u.status === 'failed').length > 0 ? `Failed ${uploadItems.filter(u => u.status === 'failed').length}/${uploadItems.length}` : '' }}
+              </div>
             </div>
           </div>
         </div>
