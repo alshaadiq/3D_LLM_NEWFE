@@ -120,10 +120,19 @@ export function useBackendApi() {
           mode: mode.toLowerCase()
         })
         
+        // Process the conversation response
+        const conversation = response.data
+        const messages = conversation.messages || []
+        
         // Backend returns the complete conversation object with all messages
         return {
-          conversation: response.data,
-          messages: response.data.messages || []
+          conversation: {
+            ...conversation,
+            title: conversation.title || "New Chat", // Trust backend title
+            message_count: messages.length,
+            updated_at: conversation.updated_at || new Date().toISOString()
+          },
+          messages: messages
         }
       } catch (err) {
         error.value = err.response?.data?.detail || 'Failed to send message'
@@ -137,7 +146,29 @@ export function useBackendApi() {
       try {
         // Backend uses /chats to list conversations
         const response = await api.get('/chats')
-        return response.data || []
+        const conversations = response.data || []
+        
+        console.log('Raw conversations from backend:', conversations)
+        
+        // Trust the backend completely - it now handles title and message_count correctly
+        const processedConversations = conversations.map(conversation => {
+          console.log(`Processing conversation ${conversation.id}:`, {
+            backendTitle: conversation.title,
+            backendMessageCount: conversation.message_count,
+            messagesLength: conversation.messages?.length
+          })
+          
+          return {
+            ...conversation,
+            // Only use "New Chat" if there's absolutely no title and no messages
+            title: conversation.title || (conversation.messages?.length > 0 ? null : "New Chat"),
+            // Use backend-provided message count or calculate from messages
+            message_count: conversation.message_count || conversation.messages?.length || 0
+          }
+        })
+        
+        console.log('Processed conversations:', processedConversations)
+        return processedConversations
       } catch (err) {
         // Don't throw error on 404, just return empty array
         if (err.response?.status === 404) {
@@ -151,12 +182,16 @@ export function useBackendApi() {
     async getConversation(conversationId) {
       try {
         const response = await api.get(`/chats/${conversationId}`)
+        const conversation = response.data
+        const messages = conversation.messages || []
+        
         return {
-          id: response.data.id,
-          title: `Chat ${conversationId.slice(0, 8)}`,
-          messages: response.data.messages || [],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          id: conversation.id,
+          title: conversation.title || "New Chat", // Trust backend title
+          messages,
+          message_count: messages.length,
+          created_at: conversation.created_at || new Date().toISOString(),
+          updated_at: conversation.updated_at || conversation.created_at || new Date().toISOString()
         }
       } catch (err) {
         error.value = err.response?.data?.detail || 'Failed to get conversation'
@@ -174,15 +209,18 @@ export function useBackendApi() {
       }
     },
 
-    async createConversation(title = 'New Conversation') {
+    async createConversation(title = null) {
       try {
         const response = await api.post('/chats')
+        const fallbackTitle = title || `Chat ${new Date().toLocaleDateString()}`
+        
         return {
           id: response.data.id,
-          title,
+          title: fallbackTitle,
           messages: [],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          message_count: 0,
+          created_at: response.data.created_at || new Date().toISOString(),
+          updated_at: response.data.updated_at || response.data.created_at || new Date().toISOString()
         }
       } catch (err) {
         error.value = err.response?.data?.detail || 'Failed to create conversation'

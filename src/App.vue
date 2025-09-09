@@ -14,10 +14,6 @@ const sidebarExpanded = ref(false)
 const activeTab = ref<'assistant' | 'document' | 'platform'>('assistant')
 const selectedMode = ref<'Chat' | 'Agent'>('Agent')
 
-const toggleSidebar = () => {
-  sidebarExpanded.value = !sidebarExpanded.value
-}
-
 // Chat functionality
 const chatInput = ref('')
 
@@ -400,19 +396,26 @@ function triggerFileInput() {
 
 // Function to get conversation title from first user message
 const getConversationTitle = (conversation: any) => {
+  // If conversation has a title and it's not "New Chat", use it
+  if (conversation.title && conversation.title !== "New Chat" && conversation.title.trim() !== "") {
+    return conversation.title
+  }
+  
   if (!conversation.messages || conversation.messages.length === 0) {
-    return `Chat ${new Date(conversation.created_at).toLocaleDateString()}`
+    return "New Chat"
   }
   
   // Find the first user message
   const firstUserMessage = conversation.messages.find((msg: any) => msg.role === 'user')
   if (firstUserMessage) {
     const content = firstUserMessage.content || firstUserMessage.message || ''
-    // Limit to first 50 characters for display
-    return content.length > 50 ? content.substring(0, 47) + '...' : content
+    if (content.trim()) {
+      // Limit to first 50 characters for display
+      return content.length > 50 ? content.substring(0, 47) + '...' : content
+    }
   }
   
-  return `Chat ${new Date(conversation.created_at).toLocaleDateString()}`
+  return "New Chat"
 }
 
 // Initialize stores on mount
@@ -438,30 +441,29 @@ watch(selectedMode, (newMode) => {
     ]"
   >
     <!-- Sidebar -->
-    <div class="bg-surface-primary border-r border-border-primary flex flex-col row-span-3">
+    <div 
+      class="bg-surface-primary border-r border-border-primary flex flex-col row-span-3 transition-all duration-200"
+      @mouseenter="sidebarExpanded = true"
+      @mouseleave="sidebarExpanded = false"
+    >
       <!-- Logo -->
       <div class="h-14 border-b border-border-primary flex items-center justify-center" :class="sidebarExpanded ? 'px-6' : 'px-4'">
         <div v-if="sidebarExpanded" class="flex items-center justify-between w-full">
           <img src="https://api.builder.io/api/v1/image/assets/TEMP/19abb9443add1cd33dcb83c578474ebfbaa3de42?width=222" alt="AetosNeuro" class="h-5.5 w-auto" />
-          <button @click="toggleSidebar" class="w-5 h-5 text-text-neutral hover:text-text-white transition-colors">
-            <svg viewBox="0 0 20 21" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M3.75 3.625C3.40482 3.625 3.125 3.90482 3.125 4.25V16.75C3.125 17.0952 3.40482 17.375 3.75 17.375H16.25C16.5952 17.375 16.875 17.0952 16.875 16.75V4.25C16.875 3.90482 16.5952 3.625 16.25 3.625H3.75ZM1.875 4.25C1.875 3.21447 2.71447 2.375 3.75 2.375H16.25C17.2855 2.375 18.125 3.21447 18.125 4.25V16.75C18.125 17.7855 17.2855 18.625 16.25 18.625H3.75C2.71447 18.625 1.875 17.7855 1.875 16.75V4.25Z"/></svg>
-          </button>
         </div>
         <div v-else class="flex justify-center">
-          <button @click="toggleSidebar">
-            <svg class="w-8 h-5 fill-text-white" viewBox="0 0 34 23"><path d="M23.6128 8.25781L23.9263 8.7832H23.9312V8.78223L29.5298 7.17578L33.1763 9.92773L30.7827 9.28711L26.0347 12.2607L26.0366 12.2637L32.1909 22.4707H26.1353L26.0063 17.3301L24.2544 22.4707L21.2495 18.8477C22.7223 16.9051 24.7279 14.1225 25.8823 12.3584C25.8835 12.3566 25.8841 12.3543 25.8853 12.3525L25.8765 12.3584L24.1011 13.4717V13.4658L25.9771 12.2012H25.9761L24.1001 13.4658L19.4038 16.6318L15.5171 19.252L10.7505 22.4707H0.82373L5.56592 14.4326H17.5425L15.0493 11.4287L15.0796 11.4238L14.6313 10.8828L19.936 9.78027L13.1587 9.1084L8.99951 4.09961L18.7173 6.65137L6.12256 0.529297H18.9507L23.6128 8.25781Z"/></svg>
-          </button>
+          <svg class="w-8 h-5 fill-text-white" viewBox="0 0 34 23"><path d="M23.6128 8.25781L23.9263 8.7832H23.9312V8.78223L29.5298 7.17578L33.1763 9.92773L30.7827 9.28711L26.0347 12.2607L26.0366 12.2637L32.1909 22.4707H26.1353L26.0063 17.3301L24.2544 22.4707L21.2495 18.8477C22.7223 16.9051 24.7279 14.1225 25.8823 12.3584C25.8835 12.3566 25.8841 12.3543 25.8853 12.3525L25.8765 12.3584L24.1011 13.4717V13.4658L25.9771 12.2012H25.9761L24.1001 13.4658L19.4038 16.6318L15.5171 19.252L10.7505 22.4707H0.82373L5.56592 14.4326H17.5425L15.0493 11.4287L15.0796 11.4238L14.6313 10.8828L19.936 9.78027L13.1587 9.1084L8.99951 4.09961L18.7173 6.65137L6.12256 0.529297H18.9507L23.6128 8.25781Z"/></svg>
         </div>
       </div>
 
       <!-- Navigation Items -->
-      <div class="flex flex-col gap-2 p-3">
-        <!-- AI Assistant -->
-        <button
-          class="flex h-14 items-center gap-2 px-3 group"
-          :class="activeTab === 'assistant' ? 'bg-opacity-100' : ''"
-          @click="activeTab = 'assistant'"
-        >
+        <div class="flex flex-col gap-2 p-3">
+          <!-- AI Assistant -->
+          <button
+            class="flex h-14 items-center gap-2 px-3 group"
+            :class="activeTab === 'assistant' ? 'bg-white bg-opacity-10' : ''"
+            @click="activeTab = 'assistant'"
+          >
           <div class="flex items-center gap-2">
             <svg class="w-5 h-5" viewBox="0 0 20 20" fill="none" stroke="#B3B3B3" stroke-width="1.5">
               <path d="M9.16667 9.16666V5.83333M13.3333 9.16666V5.83333M17.5 1.66666H2.5V15H6.66667V18.3333L10 15H14.1667L17.5 11.6667V1.66666Z"/>
@@ -487,14 +489,14 @@ watch(selectedMode, (newMode) => {
         <!-- Aetos Platform -->
         <button
           class="flex h-14 items-center gap-2 px-3 group"
-          :class="activeTab === 'platform' ? 'bg-opacity-100' : ''"
+          :class="activeTab === 'platform' ? 'bg-white bg-opacity-10' : ''"
           @click="activeTab = 'platform'"
         >
           <div class="flex items-center gap-2">
             <svg class="w-5 h-5" viewBox="0 0 20 20" fill="none" stroke="#B3B3B3" stroke-width="1.5">
               <path d="M13.3333 15L18.3333 10L13.3333 5M6.66667 5L1.66667 10L6.66667 15"/>
             </svg>
-            <span v-if="sidebarExpanded" class="text-sm text-text-neutral">Aetos Platform</span>
+            <span v-if="sidebarExpanded" class="text-sm" :class="activeTab==='platform' ? 'text-text-white' : 'text-text-neutral'">Aetos Platform</span>
           </div>
         </button>
       </div>
@@ -504,9 +506,9 @@ watch(selectedMode, (newMode) => {
     <div class="bg-surface-primary border-b border-border-primary flex items-center justify-between px-6 col-span-2">
       <div class="flex items-center gap-2">
         <span class="text-sm text-text-white">
-          <template v-if="activeTab === 'assistant'">Create Work Order</template>
-          <template v-else-if="activeTab === 'document'">Document Viewer</template>
-          <template v-else>Aetos Platform</template>
+          <template v-if="activeTab === 'assistant'"></template>
+          <template v-else-if="activeTab === 'document'"></template>
+          <template v-else></template>
         </span>
       </div>
       <div class="flex items-center gap-4">
@@ -581,7 +583,9 @@ watch(selectedMode, (newMode) => {
         </div>
         
         <div v-else class="flex-1 overflow-hidden flex flex-col min-h-0">
-          <div class="px-4 py-4 text-text-neutral text-sm flex-shrink-0">CONVERSATIONS</div>
+          <div class="px-4 py-4 text-text-neutral text-sm flex-shrink-0">
+            CONVERSATIONS ({{ chatStore.conversations.length }})
+          </div>
           <div class="flex-1 overflow-y-auto scrollbar-thin min-h-0">
             <div class="flex flex-col">
               <div 
@@ -597,7 +601,7 @@ watch(selectedMode, (newMode) => {
                   </svg>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <div class="text-sm text-text-white truncate">{{ getConversationTitle(conversation) }}</div>
+                  <div class="text-sm text-text-white truncate">{{ conversation.title || getConversationTitle(conversation) }}</div>
                   <div class="text-xs text-text-neutral">{{ conversation.messages?.length || 0 }} messages</div>
                   <div class="text-xs text-text-neutral">{{ new Date(conversation.updated_at).toLocaleDateString() }}</div>
                 </div>
@@ -686,28 +690,66 @@ watch(selectedMode, (newMode) => {
               <p class="text-base text-text-neutral">Let's start your conversation</p>
             </div>
             <div class="flex gap-6">
-              <div class="flex border border-border-primary">
+              <button 
+                @click="selectedMode = 'Chat'"
+                :class="[
+                  'flex border transition-all duration-200 hover:border-primary-green hover:shadow-lg',
+                  selectedMode === 'Chat' 
+                    ? 'border-primary-green bg-primary-green/10 shadow-lg' 
+                    : 'border-border-primary hover:bg-surface-secondary/50'
+                ]"
+              >
                 <div class="px-4 py-6 flex flex-col items-center gap-4">
                   <div class="p-3 bg-opacity-200 rounded">
-                    <svg class="w-10 h-10" viewBox="0 0 40 40" fill="none" stroke="#BEF975" stroke-width="2"><path d="M13.3333 16.6667H13.35M20 16.6667H20.0167M26.6667 16.6667H26.6833M35 25C35 25.8841 34.6488 26.7319 34.0237 27.357C33.3986 27.9821 32.5507 28.3333 31.6667 28.3333H11.6667L5 35V8.33333C5 7.44928 5.35119 6.60143 5.97631 5.97631C6.60143 5.35119 7.44928 5 8.33333 5H31.6667C32.5507 5 33.3986 5.35119 34.0237 5.97631C34.6488 6.60143 35 7.44928 35 8.33333V25Z"/></svg>
+                    <svg 
+                      class="w-10 h-10" 
+                      viewBox="0 0 40 40" 
+                      fill="none" 
+                      :stroke="selectedMode === 'Chat' ? '#BEF975' : '#8E8E93'" 
+                      stroke-width="2"
+                    >
+                      <path d="M13.3333 16.6667H13.35M20 16.6667H20.0167M26.6667 16.6667H26.6833M35 25C35 25.8841 34.6488 26.7319 34.0237 27.357C33.3986 27.9821 32.5507 28.3333 31.6667 28.3333H11.6667L5 35V8.33333C5 7.44928 5.35119 6.60143 5.97631 5.97631C6.60143 5.35119 7.44928 5 8.33333 5H31.6667C32.5507 5 33.3986 5.35119 34.0237 5.97631C34.6488 6.60143 35 7.44928 35 8.33333V25Z"/>
+                    </svg>
                   </div>
                   <div class="text-center">
-                    <div class="text-lg font-medium text-text-white">Chat</div>
+                    <div :class="[
+                      'text-lg font-medium',
+                      selectedMode === 'Chat' ? 'text-primary-green' : 'text-text-white'
+                    ]">Chat</div>
                     <div class="text-base text-text-neutral">Regular Conversation Mode</div>
                   </div>
                 </div>
-              </div>
-              <div class="flex border border-border-primary">
+              </button>
+              <button 
+                @click="selectedMode = 'Agent'"
+                :class="[
+                  'flex border transition-all duration-200 hover:border-primary-green hover:shadow-lg',
+                  selectedMode === 'Agent' 
+                    ? 'border-primary-green bg-primary-green/10 shadow-lg' 
+                    : 'border-border-primary hover:bg-surface-secondary/50'
+                ]"
+              >
                 <div class="px-4 py-6 flex flex-col items-center gap-4">
                   <div class="p-3 bg-opacity-200 rounded">
-                    <svg class="w-10 h-10" viewBox="0 0 40 40" fill="none" stroke="#BEF975" stroke-width="2"><path d="M20 10V3.33334H13.3334M3.33337 20H6.66671M15 18.3333V21.6667M25 18.3333V21.6667M33.3334 20H36.6667M13.3334 30L6.66671 36.6667V13.3333C6.66671 12.4493 7.0179 11.6014 7.64302 10.9763C8.26814 10.3512 9.11599 10 10 10H30C30.8841 10 31.7319 10.3512 32.3571 10.9763C32.9822 11.6014 33.3334 12.4493 33.3334 13.3333V26.6667C33.3334 27.5507 32.9822 28.3986 32.3571 29.0237C31.7319 29.6488 30.8841 30 30 30H13.3334Z"/></svg>
+                    <svg 
+                      class="w-10 h-10" 
+                      viewBox="0 0 40 40" 
+                      fill="none" 
+                      :stroke="selectedMode === 'Agent' ? '#BEF975' : '#8E8E93'" 
+                      stroke-width="2"
+                    >
+                      <path d="M20 10V3.33334H13.3334M3.33337 20H6.66671M15 18.3333V21.6667M25 18.3333V21.6667M33.3334 20H36.6667M13.3334 30L6.66671 36.6667V13.3333C6.66671 12.4493 7.0179 11.6014 7.64302 10.9763C8.26814 10.3512 9.11599 10 10 10H30C30.8841 10 31.7319 10.3512 32.3571 10.9763C32.9822 11.6014 33.3334 12.4493 33.3334 13.3333V26.6667C33.3334 27.5507 32.9822 28.3986 32.3571 29.0237C31.7319 29.6488 30.8841 30 30 30H13.3334Z"/>
+                    </svg>
                   </div>
                   <div class="text-center">
-                    <div class="text-lg font-medium text-text-white">Agent</div>
+                    <div :class="[
+                      'text-lg font-medium',
+                      selectedMode === 'Agent' ? 'text-primary-green' : 'text-text-white'
+                    ]">Agent</div>
                     <div class="text-base text-text-neutral">Smart document capabilities</div>
                   </div>
                 </div>
-              </div>
+              </button>
             </div>
           </div>
         </div>
@@ -861,18 +903,7 @@ watch(selectedMode, (newMode) => {
             </div>
           </div>
         </div>
-        <div v-else class="flex-1 grid grid-cols-[150px_1fr]">
-          <!-- Document Info -->
-          <div class="border-r border-border-primary overflow-auto p-4">
-            <div v-if="currentDoc" class="space-y-4">
-              <div class="text-sm text-text-white font-medium">{{ currentDoc.filename }}</div>
-              <div class="text-xs text-text-neutral">{{ currentDoc.size }}</div>
-              <div class="text-xs text-text-neutral">{{ currentDoc.content_type }}</div>
-              <div class="text-xs" :class="currentDoc.status === 'completed' ? 'text-primary-green' : currentDoc.status === 'failed' ? 'text-red-400' : 'text-yellow-400'">
-                {{ currentDoc.status === 'completed' ? 'Processed' : currentDoc.status === 'failed' ? 'Failed' : 'Processing...' }}
-              </div>
-            </div>
-          </div>
+        <div v-else class="flex-1">
           <!-- Document Content Viewer -->
           <div class="w-full h-full overflow-auto flex flex-col">
             <!-- Document Header -->

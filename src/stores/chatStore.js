@@ -57,12 +57,21 @@ export const useChatStore = defineStore('chat', () => {
       isLoading.value = true
       error.value = null
       
-      const newTitle = title || `Chat ${new Date().toLocaleString()}`
-      const conversation = await api.chat.createConversation(newTitle)
+      // Let the API handle the default title generation
+      const conversation = await api.chat.createConversation(title)
       
       conversations.value.unshift(conversation)
       currentConversation.value = conversation
       messages.value = []
+      
+      // Refresh conversation list to ensure backend sync
+      try {
+        const updatedConversations = await api.chat.getConversations()
+        conversations.value = updatedConversations
+        console.log('🔄 Conversation list refreshed after creation')
+      } catch (refreshErr) {
+        console.warn('Failed to refresh conversation list after creation:', refreshErr)
+      }
       
       return conversation
     } catch (err) {
@@ -149,9 +158,24 @@ export const useChatStore = defineStore('chat', () => {
       if (response.conversation) {
         const index = conversations.value.findIndex(c => c.id === response.conversation.id)
         if (index >= 0) {
-          conversations.value[index] = response.conversation
+          conversations.value[index] = {
+            ...response.conversation,
+            title: response.conversation.title || conversations.value[index].title
+          }
         }
-        currentConversation.value = response.conversation
+        currentConversation.value = {
+          ...response.conversation,
+          title: response.conversation.title || currentConversation.value?.title
+        }
+      }
+
+      // Refresh conversation list to ensure titles are synced with backend
+      try {
+        const updatedConversations = await api.chat.getConversations()
+        conversations.value = updatedConversations
+        console.log('🔄 Conversation list refreshed after message')
+      } catch (refreshErr) {
+        console.warn('Failed to refresh conversation list:', refreshErr)
       }
 
       // Trigger reactivity update
