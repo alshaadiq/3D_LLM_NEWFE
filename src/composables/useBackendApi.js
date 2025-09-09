@@ -386,9 +386,9 @@ export function useBackendApi() {
   const functions = {
     async getAvailableFunctions() {
       try {
-        // Backend may not have a direct functions list endpoint
-        // Return empty array for now to avoid 404 errors  
-        return []
+        // Use the Aetos functions endpoint that returns all available functions
+        const response = await api.get('/aetos/functions')
+        return response.data.functions || []
       } catch (err) {
         // Don't throw error, just return empty array
         console.warn('Functions endpoint not available:', err.message)

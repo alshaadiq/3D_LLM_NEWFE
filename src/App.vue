@@ -101,12 +101,34 @@ onMounted(async () => {
   } catch (error) {
     console.error('Error loading documents:', error)
   }
+  
+  // Initialize function store
+  console.log('Initializing function store...')
+  try {
+    await functionStore.loadAvailableFunctions()
+    console.log('Functions loaded:', functionStore.availableFunctions.length)
+  } catch (error) {
+    console.error('Failed to load functions:', error)
+  }
 })
 
 // Watch for document changes
 watch(() => documentStore.documents, (newDocs) => {
   console.log('Documents changed:', newDocs.length, 'documents')
 }, { immediate: true, deep: true })
+
+// Watch for platform tab activation to load functions if not already loaded
+watch(activeTab, async (newTab) => {
+  if (newTab === 'platform' && !functionStore.hasFunctions && !functionStore.isLoading) {
+    console.log('Platform tab activated, loading functions...')
+    try {
+      await functionStore.loadAvailableFunctions()
+      console.log('Functions loaded for platform:', functionStore.availableFunctions.length)
+    } catch (error) {
+      console.error('Failed to load functions for platform:', error)
+    }
+  }
+})
 
 function openUploadModal() {
   showUploadModal.value = true
@@ -394,6 +416,65 @@ function triggerFileInput() {
   fileInput.value?.click()
 }
 
+// Platform state
+const platformSearchQuery = ref('')
+const selectedPlatformApp = ref('App (All)')
+const expandedFunctions = ref<Set<string>>(new Set())
+
+// Use function store for platform functions
+const platformFunctions = computed(() => {
+  if (!functionStore.hasFunctions) {
+    return []
+  }
+  
+  // Convert functions to platform format
+  return functionStore.availableFunctions.map(func => ({
+    id: func.function_id,
+    name: func.function_name,
+    category: func.app || func.category,
+    description: func.description,
+    parameters: func.parameters,
+    use_cases: func.use_cases
+  })).filter(func => {
+    // Filter by search query
+    if (platformSearchQuery.value.trim()) {
+      const query = platformSearchQuery.value.toLowerCase()
+      return func.name.toLowerCase().includes(query) ||
+             func.description.toLowerCase().includes(query) ||
+             func.category.toLowerCase().includes(query)
+    }
+    
+    // Filter by selected app
+    if (selectedPlatformApp.value !== 'App (All)') {
+      return func.category.toLowerCase() === selectedPlatformApp.value.toLowerCase()
+    }
+    
+    return true
+  })
+})
+
+// Get function counts by category for platform cards
+const platformAppCounts = computed(() => {
+  const counts = { browser: 0, cube: 0, terra: 0 }
+  
+  functionStore.availableFunctions.forEach(func => {
+    const category = (func.app || func.category || '').toLowerCase()
+    if (category.includes('browser')) counts.browser++
+    else if (category.includes('cube')) counts.cube++
+    else if (category.includes('terra')) counts.terra++
+  })
+  
+  return counts
+})
+
+const toggleFunctionExpanded = (functionId: string) => {
+  if (expandedFunctions.value.has(functionId)) {
+    expandedFunctions.value.delete(functionId)
+  } else {
+    expandedFunctions.value.add(functionId)
+  }
+}
+
 // Function to get conversation title from first user message
 const getConversationTitle = (conversation: any) => {
   // If conversation has a title and it's not "New Chat", use it
@@ -560,6 +641,15 @@ watch(selectedMode, (newMode) => {
       </div>
     </div>
 
+    <!-- Row 2 (Platform header) -->
+    <div v-else class="bg-surface-primary border-b border-border-primary flex items-center justify-between px-6 col-span-2">
+      <div class="flex items-center gap-4">
+        <div class="flex flex-col justify-center">
+          <h1 class="text-xl font-light text-text-white">Aetos Platform</h1>
+        </div>
+      </div>
+    </div>
+
     <!-- Content columns vary per tab -->
 
     <!-- Left column (340px) -->
@@ -669,14 +759,13 @@ watch(selectedMode, (newMode) => {
         </div>
       </template>
 
-      <!-- Placeholder for platform tab -->
-      <template v-else>
-        <div class="flex-1 flex items-center justify-center text-text-neutral">Select a platform feature</div>
-      </template>
     </div>
 
     <!-- Right main content -->
-    <div class="bg-surface-primary flex flex-col border-t border-border-primary overflow-hidden">
+    <div 
+      class="bg-surface-primary flex flex-col border-t border-border-primary overflow-hidden"
+      :class="activeTab === 'platform' ? 'col-span-1' : ''"
+    >
       <!-- Assistant main -->
       <template v-if="activeTab === 'assistant'">
         <!-- Welcome screen when no conversation is selected -->
@@ -1078,14 +1167,196 @@ watch(selectedMode, (newMode) => {
         </div>
       </template>
 
-      <!-- Platform placeholder -->
+      <!-- Platform main -->
       <template v-else>
-        <div class="flex-1 flex items-center justify-center text-text-neutral">Platform coming soon</div>
+        <!-- Platform Cards Section -->
+        <div class="p-6 border-b border-border-primary">
+            <div class="grid grid-cols-3 gap-4 max-w-6xl">
+              <!-- Aetos Browser Card -->
+              <div class="border border-border-primary bg-surface-secondary p-4">
+                <div class="flex items-start gap-3 mb-3">
+                  <div class="w-8 h-8 flex items-center justify-center flex-shrink-0">
+                    <img src="/src/assets/logos/aetos-browser-logo.svg" alt="Aetos Browser" class="w-8 h-8" />
+                  </div>
+                  <div class="flex-1">
+                    <h3 class="text-base font-medium text-text-white">Aetos Browser</h3>
+                    <p class="text-sm text-text-neutral">Satellite Imagery Platform</p>
+                  </div>
+                </div>
+                <p class="text-sm text-text-neutral mb-3">Search, download, and manage satellite imagery from multiple providers</p>
+                <div class="text-xs text-primary-green font-medium">{{ platformAppCounts.browser }} functions available</div>
+              </div>
+
+              <!-- Aetos Cube Card -->
+              <div class="border border-border-primary bg-surface-secondary p-4">
+                <div class="flex items-start gap-3 mb-3">
+                  <div class="w-8 h-8 flex items-center justify-center flex-shrink-0">
+                    <img src="/src/assets/logos/aetos-cube-logo.svg" alt="Aetos Cube" class="w-8 h-8" />
+                  </div>
+                  <div class="flex-1">
+                    <h3 class="text-base font-medium text-text-white">Aetos Cube</h3>
+                    <p class="text-sm text-text-neutral">Datacube Platform</p>
+                  </div>
+                </div>
+                <p class="text-sm text-text-neutral mb-3">Store, query, and analyze geospatial datasets in datacube format</p>
+                <div class="text-xs text-primary-green font-medium">{{ platformAppCounts.cube }} functions available</div>
+              </div>
+
+              <!-- Aetos Terra Card -->
+              <div class="border border-border-primary bg-surface-secondary p-4">
+                <div class="flex items-start gap-3 mb-3">
+                  <div class="w-8 h-8 flex items-center justify-center flex-shrink-0">
+                    <img src="/src/assets/logos/aetos-terra-logo.svg" alt="Aetos Terra" class="w-8 h-8" />
+                  </div>
+                  <div class="flex-1">
+                    <h3 class="text-base font-medium text-text-white">Aetos Terra</h3>
+                    <p class="text-sm text-text-neutral">3D Visualization & Analysis</p>
+                  </div>
+                </div>
+                <p class="text-sm text-text-neutral mb-3">3D visualization, spatial analysis, and geospatial data processing</p>
+                <div class="text-xs text-primary-green font-medium">{{ platformAppCounts.terra }} functions available</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Search Section -->
+          <div class="p-6 border-b border-border-primary">
+            <div class="flex gap-3 max-w-6xl">
+              <div class="relative flex-1">
+                <input 
+                  v-model="platformSearchQuery"
+                  type="text" 
+                  placeholder="Search" 
+                  class="w-full h-12 px-3 pr-10 bg-surface-primary border border-border-primary text-text-neutral placeholder-text-neutral text-sm focus:outline-none focus:border-primary-green" 
+                />
+                <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-white" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 14L11.1 11.1M12.6667 7.33333C12.6667 10.2789 10.2789 12.6667 7.33333 12.6667C4.38781 12.6667 2 10.2789 2 7.33333C2 4.38781 4.38781 2 7.33333 2C10.2789 2 12.6667 4.38781 12.6667 7.33333Z"/></svg>
+              </div>
+              <div class="relative">
+                <select 
+                  v-model="selectedPlatformApp"
+                  class="h-12 px-4 pr-8 bg-surface-primary border border-border-primary text-text-white text-sm focus:outline-none focus:border-primary-green appearance-none min-w-[120px]"
+                >
+                  <option>App (All)</option>
+                  <option>Browser</option>
+                  <option>Cube</option>
+                  <option>Terra</option>
+                </select>
+                <svg class="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-text-white pointer-events-none" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M8 10.5L3.5 6L4.5 5L8 8.5L11.5 5L12.5 6L8 10.5Z"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Function List -->
+          <div class="flex-1 overflow-auto p-6">
+            <!-- Loading state -->
+            <div v-if="functionStore.isLoading" class="flex items-center justify-center py-12">
+              <div class="text-center">
+                <div class="w-8 h-8 border-2 border-primary-green border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                <p class="text-text-neutral">Loading functions...</p>
+              </div>
+            </div>
+            
+            <!-- Error state -->
+            <div v-else-if="functionStore.error" class="flex items-center justify-center py-12">
+              <div class="text-center">
+                <svg class="w-12 h-12 text-red-400 mx-auto mb-3" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2Z"/>
+                </svg>
+                <p class="text-text-neutral mb-2">Failed to load functions</p>
+                <p class="text-sm text-red-400">{{ functionStore.error }}</p>
+                <button 
+                  @click="functionStore.loadAvailableFunctions()"
+                  class="mt-3 px-4 py-2 bg-primary-green text-text-brand text-sm hover:bg-primary-green/90 transition-colors"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+            
+            <!-- Empty state -->
+            <div v-else-if="!functionStore.hasFunctions" class="flex items-center justify-center py-12">
+              <div class="text-center">
+                <svg class="w-12 h-12 text-text-neutral mx-auto mb-3" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+                </svg>
+                <p class="text-text-neutral">No functions available</p>
+                <p class="text-sm text-text-tertiary">Functions will appear here when the backend is running</p>
+              </div>
+            </div>
+            
+            <!-- Function list -->
+            <div v-else class="space-y-4 max-w-6xl">
+              <!-- Dynamic Function List -->
+              <div 
+                v-for="func in platformFunctions" 
+                :key="func.id" 
+                class="border border-border-primary bg-surface-secondary"
+              >
+                <div 
+                  class="p-4 flex items-center justify-between cursor-pointer hover:bg-surface-primary/50 transition-colors"
+                  @click="toggleFunctionExpanded(func.id)"
+                >
+                  <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-3">
+                      <span class="text-sm text-primary-green font-medium">{{ func.name }}</span>
+                      <span class="px-2 py-1 bg-surface-primary text-xs text-text-neutral rounded">{{ func.category }}</span>
+                    </div>
+                  </div>
+                  <svg 
+                    class="w-4 h-4 text-text-neutral transform transition-transform duration-200" 
+                    :class="{ 'rotate-90': expandedFunctions.has(func.id) }"
+                    viewBox="0 0 16 16" 
+                    fill="currentColor"
+                  >
+                    <path d="M8 4L12 8L8 12L7 11L10 8L7 5L8 4Z"/>
+                  </svg>
+                </div>
+                <div 
+                  v-if="expandedFunctions.has(func.id)"
+                  class="px-4 pb-4"
+                >
+                  <p class="text-sm text-text-neutral mt-2 mb-3">{{ func.description }}</p>
+                  
+                  <!-- Parameters -->
+                  <div v-if="func.parameters && func.parameters.length > 0" class="mb-3">
+                    <h4 class="text-xs text-text-white font-medium mb-2">Parameters:</h4>
+                    <div class="space-y-1">
+                      <div v-for="param in func.parameters" :key="param.name" class="text-xs">
+                        <span class="text-primary-green">{{ param.name }}</span>
+                        <span v-if="param.required" class="text-red-400 ml-1">*</span>
+                        <span class="text-text-neutral ml-2">{{ param.description }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Use cases -->
+                  <div v-if="func.use_cases && func.use_cases.length > 0">
+                    <h4 class="text-xs text-text-white font-medium mb-2">Use Cases:</h4>
+                    <div class="flex flex-wrap gap-1">
+                      <span 
+                        v-for="useCase in func.use_cases.slice(0, 3)" 
+                        :key="useCase"
+                        class="px-2 py-1 bg-primary-green/20 text-primary-green text-xs rounded"
+                      >
+                        {{ useCase }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- No filtered results -->
+              <div v-if="platformFunctions.length === 0 && functionStore.hasFunctions" class="text-center py-12">
+                <p class="text-text-neutral">No functions match your search criteria</p>
+                <p class="text-sm text-text-tertiary mt-1">Try adjusting your search or filter settings</p>
+              </div>
+            </div>
+          </div>
       </template>
     </div>
-  </div>
-
-  <!-- Open upload modal button (for demo) hidden when in assistant) -->
+  </div>  <!-- Open upload modal button (for demo) hidden when in assistant) -->
   <button v-if="activeTab==='document' && !hasDocs && !showUploadModal" class="fixed bottom-6 right-6 bg-primary-green text-text-brand px-4 py-2" @click="openUploadModal">Upload</button>
 </template>
 
