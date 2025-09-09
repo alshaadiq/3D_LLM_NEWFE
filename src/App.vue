@@ -3,6 +3,7 @@ import { computed, ref, onMounted, watch } from 'vue'
 import { useChatStore } from '@/stores/chatStore'
 import { useDocumentStore } from '@/stores/documentStore'
 import { useFunctionStore } from '@/stores/functionStore'
+import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 
 // Initialize stores
 const chatStore = useChatStore()
@@ -753,9 +754,6 @@ watch(selectedMode, (newMode) => {
               </button>
             </div>
           </div>
-          <div class="px-4 py-2 text-xs text-text-neutral">
-            Debug: Store docs: {{ documentStore.documents.length }}, Loading: {{ documentStore.isLoading }}
-          </div>
         </div>
       </template>
 
@@ -880,7 +878,7 @@ watch(selectedMode, (newMode) => {
               <div v-if="message.role === 'user'" class="flex gap-3 max-w-[80%] ml-auto">
                 <div class="flex flex-col gap-1">
                   <div class="bg-primary-green text-text-brand px-4 py-3 rounded-lg rounded-br-sm">
-                    {{ (message as any).content || (message as any).message }}
+                    <MarkdownRenderer :content="(message as any).content || (message as any).message" />
                   </div>
                   <div class="text-xs text-text-neutral text-right">
                     {{ new Date((message as any).timestamp || (message as any).date).toLocaleTimeString() }}
@@ -906,7 +904,7 @@ watch(selectedMode, (newMode) => {
                     class="bg-surface-secondary text-text-white px-4 py-3 rounded-lg rounded-bl-sm"
                     :class="{ 'border border-red-500': message.error }"
                   >
-                    {{ (message as any).content || (message as any).message }}
+                    <MarkdownRenderer :content="(message as any).content || (message as any).message" />
                   </div>
                   <div class="text-xs text-text-neutral">
                     {{ new Date((message as any).timestamp || (message as any).date).toLocaleTimeString() }}
