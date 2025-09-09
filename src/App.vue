@@ -524,17 +524,17 @@ watch(selectedMode, (newMode) => {
   >
     <!-- Sidebar -->
     <div 
-      class="bg-surface-primary border-r border-border-primary flex flex-col row-span-3 transition-all duration-200"
+      class="bg-surface-primary border-r border-border-primary flex flex-col row-span-3 transition-all duration-300 ease-out group"
       @mouseenter="sidebarExpanded = true"
       @mouseleave="sidebarExpanded = false"
     >
       <!-- Logo -->
-      <div class="h-14 border-b border-border-primary flex items-center justify-center" :class="sidebarExpanded ? 'px-6' : 'px-4'">
-        <div v-if="sidebarExpanded" class="flex items-center justify-between w-full">
-          <img src="https://api.builder.io/api/v1/image/assets/TEMP/19abb9443add1cd33dcb83c578474ebfbaa3de42?width=222" alt="AetosNeuro" class="h-5.5 w-auto" />
+      <div class="h-14 border-b border-border-primary flex items-center justify-center transition-all duration-300" :class="sidebarExpanded ? 'px-6' : 'px-4'">
+        <div v-if="sidebarExpanded" class="flex items-center justify-between w-full animate-fade-in" style="animation-delay: 100ms; animation-fill-mode: forwards; opacity: 0;">
+          <img src="https://api.builder.io/api/v1/image/assets/TEMP/19abb9443add1cd33dcb83c578474ebfbaa3de42?width=222" alt="AetosNeuro" class="h-5.5 w-auto transition-all duration-300" />
         </div>
-        <div v-else class="flex justify-center">
-          <svg class="w-8 h-5 fill-text-white" viewBox="0 0 34 23"><path d="M23.6128 8.25781L23.9263 8.7832H23.9312V8.78223L29.5298 7.17578L33.1763 9.92773L30.7827 9.28711L26.0347 12.2607L26.0366 12.2637L32.1909 22.4707H26.1353L26.0063 17.3301L24.2544 22.4707L21.2495 18.8477C22.7223 16.9051 24.7279 14.1225 25.8823 12.3584C25.8835 12.3566 25.8841 12.3543 25.8853 12.3525L25.8765 12.3584L24.1011 13.4717V13.4658L25.9771 12.2012H25.9761L24.1001 13.4658L19.4038 16.6318L15.5171 19.252L10.7505 22.4707H0.82373L5.56592 14.4326H17.5425L15.0493 11.4287L15.0796 11.4238L14.6313 10.8828L19.936 9.78027L13.1587 9.1084L8.99951 4.09961L18.7173 6.65137L6.12256 0.529297H18.9507L23.6128 8.25781Z"/></svg>
+        <div v-else class="flex justify-center transition-all duration-300">
+          <svg class="w-8 h-5 fill-text-white transition-all duration-300 group-hover:scale-110" viewBox="0 0 34 23"><path d="M23.6128 8.25781L23.9263 8.7832H23.9312V8.78223L29.5298 7.17578L33.1763 9.92773L30.7827 9.28711L26.0347 12.2607L26.0366 12.2637L32.1909 22.4707H26.1353L26.0063 17.3301L24.2544 22.4707L21.2495 18.8477C22.7223 16.9051 24.7279 14.1225 25.8823 12.3584C25.8835 12.3566 25.8841 12.3543 25.8853 12.3525L25.8765 12.3584L24.1011 13.4717V13.4658L25.9771 12.2012H25.9761L24.1001 13.4658L19.4038 16.6318L15.5171 19.252L10.7505 22.4707H0.82373L5.56592 14.4326H17.5425L15.0493 11.4287L15.0796 11.4238L14.6313 10.8828L19.936 9.78027L13.1587 9.1084L8.99951 4.09961L18.7173 6.65137L6.12256 0.529297H18.9507L23.6128 8.25781Z"/></svg>
         </div>
       </div>
 
@@ -542,43 +542,46 @@ watch(selectedMode, (newMode) => {
         <div class="flex flex-col gap-2 p-3">
           <!-- AI Assistant -->
           <button
-            class="flex h-14 items-center gap-2 px-3 group"
-            :class="activeTab === 'assistant' ? 'bg-white bg-opacity-10' : ''"
+            class="flex h-14 items-center gap-2 px-3 group/nav relative overflow-hidden transition-all duration-300 ease-out hover:scale-105"
+            :class="activeTab === 'assistant' ? 'bg-white bg-opacity-10 shadow-lg' : 'hover:bg-white hover:bg-opacity-5'"
             @click="activeTab = 'assistant'"
           >
-          <div class="flex items-center gap-2">
-            <svg class="w-5 h-5" viewBox="0 0 20 20" fill="none" stroke="#B3B3B3" stroke-width="1.5">
+          <div class="absolute inset-0 bg-gradient-to-r from-primary-green/20 to-transparent opacity-0 transition-opacity duration-300" :class="{ 'opacity-100': activeTab === 'assistant' }"></div>
+          <div class="flex items-center gap-2 relative z-10">
+            <svg class="w-5 h-5 transition-all duration-300 group-hover/nav:scale-110" viewBox="0 0 20 20" fill="none" stroke="#B3B3B3" stroke-width="1.5">
               <path d="M9.16667 9.16666V5.83333M13.3333 9.16666V5.83333M17.5 1.66666H2.5V15H6.66667V18.3333L10 15H14.1667L17.5 11.6667V1.66666Z"/>
             </svg>
-            <span v-if="sidebarExpanded" class="text-sm" :class="activeTab==='assistant' ? 'text-text-white' : 'text-text-neutral'">AI Assistant</span>
+            <span v-if="sidebarExpanded" class="text-sm transition-all duration-300 animate-slide-in-right" style="animation-delay: 150ms; animation-fill-mode: forwards; opacity: 0;" :class="activeTab==='assistant' ? 'text-text-white font-medium' : 'text-text-neutral'">AI Assistant</span>
           </div>
         </button>
 
         <!-- Document -->
         <button
-          class="flex h-14 items-center gap-2 px-3 group"
-          :class="activeTab === 'document' ? 'bg-white bg-opacity-10' : ''"
+          class="flex h-14 items-center gap-2 px-3 group/nav relative overflow-hidden transition-all duration-300 ease-out hover:scale-105"
+          :class="activeTab === 'document' ? 'bg-white bg-opacity-10 shadow-lg' : 'hover:bg-white hover:bg-opacity-5'"
           @click="activeTab = 'document'"
         >
-          <div class="flex items-center gap-2">
-            <svg class="w-5 h-5" viewBox="0 0 20 20" fill="none" stroke="#B3B3B3" stroke-width="1.5">
+          <div class="absolute inset-0 bg-gradient-to-r from-primary-green/20 to-transparent opacity-0 transition-opacity duration-300" :class="{ 'opacity-100': activeTab === 'document' }"></div>
+          <div class="flex items-center gap-2 relative z-10">
+            <svg class="w-5 h-5 transition-all duration-300 group-hover/nav:scale-110" viewBox="0 0 20 20" fill="none" stroke="#B3B3B3" stroke-width="1.5">
               <path d="M11.6667 1.66667H5C4.55797 1.66667 4.13405 1.84227 3.82149 2.15483C3.50893 2.46739 3.33333 2.89131 3.33333 3.33334V16.6667C3.33333 17.1087 3.50893 17.5326 3.82149 17.8452C4.13405 18.1577 4.55797 18.3333 5 18.3333H15C15.442 18.3333 15.866 18.1577 16.1785 17.8452C16.4911 17.5326 16.6667 17.1087 16.6667 16.6667V6.66667M11.6667 1.66667L16.6667 6.66667M11.6667 1.66667L11.6667 6.66667H16.6667M13.3333 10.8333H6.66667M13.3333 14.1667H6.66667M8.33333 7.5H6.66667"/>
             </svg>
-            <span v-if="sidebarExpanded" class="text-sm" :class="activeTab==='document' ? 'text-text-white' : 'text-text-neutral'">Document</span>
+            <span v-if="sidebarExpanded" class="text-sm transition-all duration-300 animate-slide-in-right" style="animation-delay: 200ms; animation-fill-mode: forwards; opacity: 0;" :class="activeTab==='document' ? 'text-text-white font-medium' : 'text-text-neutral'">Document</span>
           </div>
         </button>
 
         <!-- Aetos Platform -->
         <button
-          class="flex h-14 items-center gap-2 px-3 group"
-          :class="activeTab === 'platform' ? 'bg-white bg-opacity-10' : ''"
+          class="flex h-14 items-center gap-2 px-3 group/nav relative overflow-hidden transition-all duration-300 ease-out hover:scale-105"
+          :class="activeTab === 'platform' ? 'bg-white bg-opacity-10 shadow-lg' : 'hover:bg-white hover:bg-opacity-5'"
           @click="activeTab = 'platform'"
         >
-          <div class="flex items-center gap-2">
-            <svg class="w-5 h-5" viewBox="0 0 20 20" fill="none" stroke="#B3B3B3" stroke-width="1.5">
+          <div class="absolute inset-0 bg-gradient-to-r from-primary-green/20 to-transparent opacity-0 transition-opacity duration-300" :class="{ 'opacity-100': activeTab === 'platform' }"></div>
+          <div class="flex items-center gap-2 relative z-10">
+            <svg class="w-5 h-5 transition-all duration-300 group-hover/nav:scale-110" viewBox="0 0 20 20" fill="none" stroke="#B3B3B3" stroke-width="1.5">
               <path d="M13.3333 15L18.3333 10L13.3333 5M6.66667 5L1.66667 10L6.66667 15"/>
             </svg>
-            <span v-if="sidebarExpanded" class="text-sm" :class="activeTab==='platform' ? 'text-text-white' : 'text-text-neutral'">Aetos Platform</span>
+            <span v-if="sidebarExpanded" class="text-sm transition-all duration-300 animate-slide-in-right" style="animation-delay: 250ms; animation-fill-mode: forwards; opacity: 0;" :class="activeTab==='platform' ? 'text-text-white font-medium' : 'text-text-neutral'">Aetos Platform</span>
           </div>
         </button>
       </div>
@@ -761,40 +764,52 @@ watch(selectedMode, (newMode) => {
 
     <!-- Right main content -->
     <div 
-      class="bg-surface-primary flex flex-col border-t border-border-primary overflow-hidden"
+      class="bg-surface-primary flex flex-col border-t border-border-primary overflow-hidden transition-all duration-300"
       :class="activeTab === 'platform' ? 'col-span-1' : ''"
     >
-      <!-- Assistant main -->
-      <template v-if="activeTab === 'assistant'">
-        <!-- Welcome screen when no conversation is selected -->
-        <div v-if="!chatStore.currentConversation" class="flex-1 flex flex-col items-center justify-center gap-6 px-12 py-20">
-          <div class="flex flex-col items-center gap-10 max-w-4xl">
-            <div class="w-18 h-18 bg-primary-green border-2 border-primary-green rounded flex items-center justify-center">
-              <svg class="w-15 h-10 fill-text-brand" viewBox="0 0 62 42"><path d="M43.6582 14.7939L44.2578 15.7988H44.2676L46.2676 19.1152L48.2012 22.3213V22.332L48.2021 22.3311V22.3213L46.2686 19.1152L44.2686 15.7979L54.9844 12.7227L61.9658 17.9893L57.3838 16.7637L48.293 22.457L48.2969 22.4629L60.0791 42.001H48.4873L48.2402 32.1611L44.8867 42.001L39.1338 35.0654C41.9531 31.3469 45.7921 26.0205 48.002 22.6436C48.0044 22.6398 48.0063 22.6356 48.0088 22.6318L47.9922 22.6426L44.5918 24.7734V24.7637L35.5996 30.8242L28.1611 35.8389L19.0361 42H0.0341797L9.11133 26.6133H32.0381L27.2656 20.8643L27.3232 20.8545L26.4658 19.8193L36.6191 17.708L23.6465 16.4219L15.6836 6.83398L34.2861 11.7178L10.1777 -0.000976562H34.7334L43.6582 14.7939Z"/></svg>
-            </div>
-            <div class="text-center">
-              <h2 class="text-2xl font-normal text-text-white mb-2 tracking-tight">How can I help you?</h2>
-              <p class="text-base text-text-neutral">Let's start your conversation</p>
-            </div>
-            <div class="flex gap-6">
-              <button 
-                @click="selectedMode = 'Chat'"
-                :class="[
-                  'flex border transition-all duration-200 hover:border-primary-green hover:shadow-lg',
-                  selectedMode === 'Chat' 
-                    ? 'border-primary-green bg-primary-green/10 shadow-lg' 
-                    : 'border-border-primary hover:bg-surface-secondary/50'
-                ]"
-              >
-                <div class="px-4 py-6 flex flex-col items-center gap-4">
-                  <div class="p-3 bg-opacity-200 rounded">
-                    <svg 
-                      class="w-10 h-10" 
-                      viewBox="0 0 40 40" 
-                      fill="none" 
-                      :stroke="selectedMode === 'Chat' ? '#BEF975' : '#8E8E93'" 
-                      stroke-width="2"
-                    >
+      <!-- Tab transition wrapper with enhanced animations -->
+      <transition 
+        name="tab-transition" 
+        mode="out-in"
+        enter-active-class="transition-all duration-400 ease-out"
+        enter-from-class="opacity-0 transform translate-y-4 scale-98"
+        enter-to-class="opacity-100 transform translate-y-0 scale-100"
+        leave-active-class="transition-all duration-200 ease-in"
+        leave-from-class="opacity-100 transform translate-y-0 scale-100"
+        leave-to-class="opacity-0 transform translate-y-2 scale-98"
+      >
+        <div :key="activeTab" class="h-full flex flex-col">
+          <!-- Assistant main -->
+          <template v-if="activeTab === 'assistant'">
+            <!-- Welcome screen when no conversation is selected -->
+            <div v-if="!chatStore.currentConversation" class="flex-1 flex flex-col items-center justify-center gap-6 px-12 py-20">
+            <div class="flex flex-col items-center gap-10 max-w-4xl animate-fade-in-up" style="animation-delay: 200ms; animation-fill-mode: forwards; opacity: 0;">
+              <div class="w-18 h-18 bg-primary-green border-2 border-primary-green rounded flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-lg">
+                <svg class="w-15 h-10 fill-text-brand transition-all duration-300" viewBox="0 0 62 42"><path d="M43.6582 14.7939L44.2578 15.7988H44.2676L46.2676 19.1152L48.2012 22.3213V22.332L48.2021 22.3311V22.3213L46.2686 19.1152L44.2686 15.7979L54.9844 12.7227L61.9658 17.9893L57.3838 16.7637L48.293 22.457L48.2969 22.4629L60.0791 42.001H48.4873L48.2402 32.1611L44.8867 42.001L39.1338 35.0654C41.9531 31.3469 45.7921 26.0205 48.002 22.6436C48.0044 22.6398 48.0063 22.6356 48.0088 22.6318L47.9922 22.6426L44.5918 24.7734V24.7637L35.5996 30.8242L28.1611 35.8389L19.0361 42H0.0341797L9.11133 26.6133H32.0381L27.2656 20.8643L27.3232 20.8545L26.4658 19.8193L36.6191 17.708L23.6465 16.4219L15.6836 6.83398L34.2861 11.7178L10.1777 -0.000976562H34.7334L43.6582 14.7939Z"/></svg>
+              </div>
+              <div class="text-center">
+                <h2 class="text-2xl font-normal text-text-white mb-2 tracking-tight">How can I help you?</h2>
+                <p class="text-base text-text-neutral">Let's start your conversation</p>
+              </div>
+              <div class="flex gap-6">
+                <button 
+                  @click="selectedMode = 'Chat'"
+                  :class="[
+                    'flex border transition-all duration-300 hover:border-primary-green hover:shadow-lg hover:scale-105 hover:-translate-y-1',
+                    selectedMode === 'Chat' 
+                      ? 'border-primary-green bg-primary-green/10 shadow-lg transform scale-105' 
+                      : 'border-border-primary hover:bg-surface-secondary/50'
+                  ]"
+                >
+                  <div class="px-4 py-6 flex flex-col items-center gap-4">
+                    <div class="p-3 bg-opacity-200 rounded transition-all duration-300">
+                      <svg 
+                        class="w-10 h-10 transition-all duration-300" 
+                        viewBox="0 0 40 40" 
+                        fill="none" 
+                        :stroke="selectedMode === 'Chat' ? '#BEF975' : '#8E8E93'" 
+                        stroke-width="2"
+                      >
                       <path d="M13.3333 16.6667H13.35M20 16.6667H20.0167M26.6667 16.6667H26.6833M35 25C35 25.8841 34.6488 26.7319 34.0237 27.357C33.3986 27.9821 32.5507 28.3333 31.6667 28.3333H11.6667L5 35V8.33333C5 7.44928 5.35119 6.60143 5.97631 5.97631C6.60143 5.35119 7.44928 5 8.33333 5H31.6667C32.5507 5 33.3986 5.35119 34.0237 5.97631C34.6488 6.60143 35 7.44928 35 8.33333V25Z"/>
                     </svg>
                   </div>
@@ -937,55 +952,58 @@ watch(selectedMode, (newMode) => {
           </div>
         </div>
 
-        <!-- Input Area -->
-        <div class="border-t border-border-primary bg-surface-primary px-10 py-4">
+        <!-- Input Area with enhanced styling and animations -->
+        <div class="border-t border-border-primary bg-surface-primary px-10 py-4 transition-all duration-300 hover:bg-surface-secondary/30">
           <div class="flex gap-3 items-center">
-            <div class="flex-1 relative">
+            <div class="flex-1 relative group">
               <input 
                 v-model="chatInput" 
                 @keypress.enter="sendChatMessage"
                 :disabled="chatStore.isLoading"
                 placeholder="Describe your thinking..."
-                class="w-full px-4 py-3 bg-surface-primary text-text-white placeholder-text-neutral text-sm focus:outline-none"
+                class="w-full px-4 py-3 bg-surface-primary text-text-white placeholder-text-neutral text-sm focus:outline-none transition-all duration-300 focus-ring hover:bg-surface-secondary/30 disabled:opacity-50"
               />
+              <!-- Animated border effect -->
+              <div class="absolute inset-0 rounded bg-gradient-to-r from-primary-green/20 to-transparent opacity-0 transition-opacity duration-300 pointer-events-none group-focus-within:opacity-100"></div>
             </div>
             <div class="flex items-center gap-3">
               <button 
                 @click="startNewChat"
-                class="px-4 py-3 border border-border-secondary text-sm text-text-white hover:border-primary-green transition-colors"
+                class="px-4 py-3 border border-border-secondary text-sm text-text-white hover:border-primary-green transition-all duration-300 hover:scale-105 hover:shadow-lg micro-bounce"
               >
                 Start New Chat
               </button>
-              <button class="w-10 h-10 border border-border-primary bg-surface-primary flex items-center justify-center hover:border-primary-green transition-colors">
-                <svg class="w-4.5 h-4.5" viewBox="0 0 18 18" fill="none" stroke="#444444" stroke-width="1">
+              <button class="w-10 h-10 border border-border-primary bg-surface-primary flex items-center justify-center hover:border-primary-green transition-all duration-300 hover:scale-110 micro-bounce">
+                <svg class="w-4.5 h-4.5 transition-all duration-300" viewBox="0 0 18 18" fill="none" stroke="#444444" stroke-width="1">
                   <path d="M13 7.72727V9C13 10.1814 12.5786 11.3144 11.8284 12.1498C11.0783 12.9852 10.0609 13.4545 9 13.4545M9 13.4545C7.93913 13.4545 6.92172 12.9852 6.17157 12.1498C5.42143 11.3144 5 10.1814 5 9V7.72727M9 13.4545V16M6.71429 16H11.2857M9 2C8.54534 2 8.10931 2.20114 7.78782 2.55916C7.46633 2.91718 7.28571 3.40277 7.28571 3.90909V9C7.28571 9.50632 7.46633 9.99191 7.78782 10.3499C8.10931 10.708 8.54534 10.9091 9 10.9091C9.45466 10.9091 9.89069 10.708 10.2122 10.3499C10.5337 9.99191 10.7143 9.50632 10.7143 9V3.90909C10.7143 3.40277 10.5337 2.91718 10.2122 2.55916C9.89069 2.20114 9.45466 2 9 2Z"/>
                 </svg>
               </button>
               <button 
                 @click="sendChatMessage" 
                 :disabled="!chatInput.trim() || chatStore.isLoading"
-                class="w-10 h-10 border border-primary-green bg-primary-green flex items-center justify-center hover:bg-primary-green/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                class="w-10 h-10 border border-primary-green bg-primary-green flex items-center justify-center hover:bg-primary-green/90 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-110 hover:shadow-lg btn-primary micro-bounce"
+                :class="{ 'animate-pulse-glow': !chatInput.trim() && !chatStore.isLoading }"
               >
-                <svg v-if="!chatStore.isLoading" class="w-4.5 h-4.5 fill-text-brand" viewBox="0 0 18 18">
+                <svg v-if="!chatStore.isLoading" class="w-4.5 h-4.5 fill-text-brand transition-all duration-300" viewBox="0 0 18 18">
                   <path d="M3.86462 1.6764C2.43116 0.959877 0.93044 2.5247 1.70969 3.92695L3.89776 7.86431C4.03005 8.10237 4.28099 8.25 4.55334 8.25L9 8.25C9.41421 8.25 9.75 8.58579 9.75 9C9.75 9.41421 9.41421 9.75 9 9.75L4.55349 9.75C4.28115 9.75 4.03021 9.89763 3.89792 10.1357L1.70969 14.0733C0.930439 15.4756 2.43116 17.0404 3.86462 16.3239L15.5985 10.4587C16.8006 9.85778 16.8006 8.14251 15.5985 7.5416L3.86462 1.6764Z"/>
                 </svg>
                 <div v-else class="w-4 h-4 border-2 border-text-brand border-t-transparent rounded-full animate-spin"></div>
               </button>
             </div>
           </div>
-          <div v-if="chatStore.error" class="text-red-400 text-sm mt-2">
+          <div v-if="chatStore.error" class="text-red-400 text-sm mt-2 animate-fade-in" style="animation-fill-mode: forwards; opacity: 0;">
             {{ chatStore.error }}
           </div>
         </div>
       </template>
 
-      <!-- Document main -->
-      <template v-else-if="activeTab === 'document'">
+      <!-- Document main with enhanced animations -->
+      <template v-else-if="activeTab === 'document'" key="document">
         <div v-if="!hasDocs" class="flex-1 flex items-center justify-center">
-          <div class="flex flex-col items-center justify-center gap-8">
-            <div class="text-2xl text-text-white text-center">Upload to view your document</div>
-            <div class="border border-dashed border-border-secondary bg-surface-secondary p-12 flex flex-col items-center gap-4 w-[480px] h-[200px] justify-center cursor-pointer hover:border-primary-green transition-colors" @click="openUploadModal">
-              <svg class="w-16 h-16" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M49 35V44.3333C49 45.571 48.5083 46.758 47.6332 47-6332C46.758 48.5083 45.571 49 44.3333 49H11.6667C10.429 49 9.242 48.5083 8.36683 47.6332C7.49167 46.758 7 45.571 7 44.3333V35M39.6667 18.6667L28 7M28 7L16.3333 18.6667M28 7V35" stroke="#BEF975" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div class="flex flex-col items-center justify-center gap-8 opacity-0 animate-fade-in-up" style="animation-delay: 200ms;">
+            <div class="text-2xl text-text-white text-center gradient-text">Upload to view your document</div>
+            <div class="border border-dashed border-border-secondary bg-surface-secondary p-12 flex flex-col items-center gap-4 w-[480px] h-[200px] justify-center cursor-pointer hover:border-primary-green transition-all duration-300 hover:scale-105 hover:shadow-lg hover-lift" @click="openUploadModal">
+              <svg class="w-16 h-16 transition-all duration-300 micro-grow" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M49 35V44.3333C49 45.571 48.5083 46.758 47.6332 47-6332C46.758 48.5083 45.571 49 44.3333 49H11.6667C10.429 49 9.242 48.5083 8.36683 47.6332C7.49167 46.758 7 45.571 7 44.3333V35M39.6667 18.6667L28 7M28 7L16.3333 18.6667M28 7V35" stroke="#BEF975" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
               <div class="text-lg text-text-white text-center">Drag and drop AOI files here.</div>
             </div>
           </div>
@@ -1217,133 +1235,182 @@ watch(selectedMode, (newMode) => {
             </div>
           </div>
 
-          <!-- Search Section -->
-          <div class="p-6 border-b border-border-primary">
+          <!-- Search Section with enhanced styling -->
+          <div class="p-6 border-b border-border-primary bg-surface-secondary/30 backdrop-blur-sm">
             <div class="flex gap-3 max-w-6xl">
-              <div class="relative flex-1">
+              <div class="relative flex-1 group">
                 <input 
                   v-model="platformSearchQuery"
                   type="text" 
-                  placeholder="Search" 
-                  class="w-full h-12 px-3 pr-10 bg-surface-primary border border-border-primary text-text-neutral placeholder-text-neutral text-sm focus:outline-none focus:border-primary-green" 
+                  placeholder="Search functions..." 
+                  class="w-full h-12 px-3 pr-10 bg-surface-primary border border-border-primary text-text-neutral placeholder-text-neutral text-sm focus:outline-none focus:border-primary-green transition-all duration-300 focus-ring hover:bg-surface-secondary/30" 
                 />
-                <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-white" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 14L11.1 11.1M12.6667 7.33333C12.6667 10.2789 10.2789 12.6667 7.33333 12.6667C4.38781 12.6667 2 10.2789 2 7.33333C2 4.38781 4.38781 2 7.33333 2C10.2789 2 12.6667 4.38781 12.6667 7.33333Z"/></svg>
+                <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-white transition-all duration-300 group-focus-within:text-primary-green group-hover:scale-110" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 14L11.1 11.1M12.6667 7.33333C12.6667 10.2789 10.2789 12.6667 7.33333 12.6667C4.38781 12.6667 2 10.2789 2 7.33333C2 4.38781 4.38781 2 7.33333 2C10.2789 2 12.6667 4.38781 12.6667 7.33333Z"/></svg>
+                <!-- Animated focus border -->
+                <div class="absolute inset-0 rounded bg-gradient-to-r from-primary-green/20 to-transparent opacity-0 transition-opacity duration-300 pointer-events-none group-focus-within:opacity-100"></div>
               </div>
-              <div class="relative">
+              <div class="relative group">
                 <select 
                   v-model="selectedPlatformApp"
-                  class="h-12 px-4 pr-8 bg-surface-primary border border-border-primary text-text-white text-sm focus:outline-none focus:border-primary-green appearance-none min-w-[120px]"
+                  class="h-12 px-4 pr-8 bg-surface-primary border border-border-primary text-text-white text-sm focus:outline-none focus:border-primary-green appearance-none min-w-[120px] transition-all duration-300 hover:bg-surface-secondary/30 focus-ring"
                 >
                   <option>App (All)</option>
                   <option>Browser</option>
                   <option>Cube</option>
                   <option>Terra</option>
                 </select>
-                <svg class="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-text-white pointer-events-none" viewBox="0 0 16 16" fill="currentColor">
+                <svg class="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-text-white pointer-events-none transition-all duration-300 group-hover:text-primary-green" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M8 10.5L3.5 6L4.5 5L8 8.5L11.5 5L12.5 6L8 10.5Z"/>
                 </svg>
               </div>
             </div>
           </div>
 
-          <!-- Function List -->
+          <!-- Function List with enhanced loading states -->
           <div class="flex-1 overflow-auto p-6">
-            <!-- Loading state -->
-            <div v-if="functionStore.isLoading" class="flex items-center justify-center py-12">
-              <div class="text-center">
+            <!-- Enhanced loading state with skeleton loaders -->
+            <div v-if="functionStore.isLoading" class="space-y-4">
+              <div class="text-center mb-8">
                 <div class="w-8 h-8 border-2 border-primary-green border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-                <p class="text-text-neutral">Loading functions...</p>
+                <p class="text-text-neutral animate-fade-in" style="animation-fill-mode: forwards; opacity: 0;">Loading functions...</p>
+              </div>
+              <!-- Skeleton loading cards -->
+              <div v-for="i in 3" :key="i" class="border border-border-primary bg-surface-secondary">
+                <div class="p-4 flex items-center justify-between">
+                  <div class="flex items-center gap-4 flex-1">
+                    <div class="flex items-center gap-3 flex-1">
+                      <div class="h-4 bg-border-primary rounded skeleton-loading" style="width: 120px;"></div>
+                      <div class="h-6 bg-border-primary rounded skeleton-loading" style="width: 60px;"></div>
+                    </div>
+                  </div>
+                  <div class="w-4 h-4 bg-border-primary rounded skeleton-loading"></div>
+                </div>
               </div>
             </div>
             
-            <!-- Error state -->
+            <!-- Enhanced error state -->
             <div v-else-if="functionStore.error" class="flex items-center justify-center py-12">
-              <div class="text-center">
-                <svg class="w-12 h-12 text-red-400 mx-auto mb-3" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2Z"/>
-                </svg>
-                <p class="text-text-neutral mb-2">Failed to load functions</p>
-                <p class="text-sm text-red-400">{{ functionStore.error }}</p>
+              <div class="text-center animate-fade-in-up" style="animation-delay: 200ms; animation-fill-mode: forwards; opacity: 0;">
+                <div class="w-16 h-16 mx-auto mb-4 text-red-400 animate-bounce">
+                  <svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full">
+                    <path d="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2Z"/>
+                  </svg>
+                </div>
+                <p class="text-text-neutral mb-2 text-lg">Failed to load functions</p>
+                <p class="text-sm text-red-400 mb-4">{{ functionStore.error }}</p>
                 <button 
                   @click="functionStore.loadAvailableFunctions()"
-                  class="mt-3 px-4 py-2 bg-primary-green text-text-brand text-sm hover:bg-primary-green/90 transition-colors"
+                  class="px-6 py-3 bg-primary-green text-text-brand text-sm hover:bg-primary-green/90 transition-all duration-300 hover:scale-105 hover:shadow-lg btn-primary micro-bounce"
                 >
-                  Retry
+                  Try Again
                 </button>
               </div>
             </div>
             
-            <!-- Empty state -->
+            <!-- Enhanced empty state -->
             <div v-else-if="!functionStore.hasFunctions" class="flex items-center justify-center py-12">
-              <div class="text-center">
-                <svg class="w-12 h-12 text-text-neutral mx-auto mb-3" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
-                </svg>
-                <p class="text-text-neutral">No functions available</p>
-                <p class="text-sm text-text-tertiary">Functions will appear here when the backend is running</p>
+              <div class="text-center animate-fade-in-up" style="animation-delay: 200ms; animation-fill-mode: forwards; opacity: 0;">
+                <div class="w-16 h-16 mx-auto mb-4 text-text-neutral animate-pulse">
+                  <svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full">
+                    <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+                  </svg>
+                </div>
+                <p class="text-text-neutral text-lg gradient-text">No functions available</p>
+                <p class="text-sm text-text-tertiary mt-2">Functions will appear here when the backend is running</p>
               </div>
             </div>
             
-            <!-- Function list -->
+            <!-- Function list with enhanced animations -->
             <div v-else class="space-y-4 max-w-6xl">
-              <!-- Dynamic Function List -->
-              <div 
-                v-for="func in platformFunctions" 
-                :key="func.id" 
-                class="border border-border-primary bg-surface-secondary"
+              <!-- Dynamic Function List with staggered animations -->
+              <transition-group 
+                name="function-list" 
+                tag="div"
+                class="space-y-4"
+                enter-active-class="transition-all duration-500 ease-out"
+                enter-from-class="opacity-0 transform translate-y-4 scale-95"
+                enter-to-class="opacity-100 transform translate-y-0 scale-100"
+                leave-active-class="transition-all duration-300 ease-in"
+                leave-from-class="opacity-100 transform translate-y-0 scale-100"
+                leave-to-class="opacity-0 transform -translate-y-4 scale-95"
               >
                 <div 
-                  class="p-4 flex items-center justify-between cursor-pointer hover:bg-surface-primary/50 transition-colors"
-                  @click="toggleFunctionExpanded(func.id)"
+                  v-for="(func, index) in platformFunctions" 
+                  :key="func.id" 
+                  class="border border-border-primary bg-surface-secondary hover-lift platform-card animate-fade-in"
+                  :style="{ 'animation-delay': `${index * 100}ms`, 'animation-fill-mode': 'forwards', 'opacity': '0' }"
                 >
-                  <div class="flex items-center gap-4">
-                    <div class="flex items-center gap-3">
-                      <span class="text-sm text-primary-green font-medium">{{ func.name }}</span>
-                      <span class="px-2 py-1 bg-surface-primary text-xs text-text-neutral rounded">{{ func.category }}</span>
-                    </div>
-                  </div>
-                  <svg 
-                    class="w-4 h-4 text-text-neutral transform transition-transform duration-200" 
-                    :class="{ 'rotate-90': expandedFunctions.has(func.id) }"
-                    viewBox="0 0 16 16" 
-                    fill="currentColor"
+                  <div 
+                    class="p-4 flex items-center justify-between cursor-pointer hover:bg-surface-primary/50 transition-all duration-300 group"
+                    @click="toggleFunctionExpanded(func.id)"
                   >
-                    <path d="M8 4L12 8L8 12L7 11L10 8L7 5L8 4Z"/>
-                  </svg>
-                </div>
-                <div 
-                  v-if="expandedFunctions.has(func.id)"
-                  class="px-4 pb-4"
-                >
-                  <p class="text-sm text-text-neutral mt-2 mb-3">{{ func.description }}</p>
-                  
-                  <!-- Parameters -->
-                  <div v-if="func.parameters && func.parameters.length > 0" class="mb-3">
-                    <h4 class="text-xs text-text-white font-medium mb-2">Parameters:</h4>
-                    <div class="space-y-1">
-                      <div v-for="param in func.parameters" :key="param.name" class="text-xs">
-                        <span class="text-primary-green">{{ param.name }}</span>
-                        <span v-if="param.required" class="text-red-400 ml-1">*</span>
-                        <span class="text-text-neutral ml-2">{{ param.description }}</span>
+                    <div class="flex items-center gap-4">
+                      <div class="flex items-center gap-3">
+                        <span class="text-sm text-primary-green font-medium transition-colors duration-300 group-hover:text-primary-green/80">{{ func.name }}</span>
+                        <span class="px-2 py-1 bg-surface-primary text-xs text-text-neutral rounded transition-all duration-300 group-hover:bg-primary-green/20 group-hover:text-primary-green">{{ func.category }}</span>
                       </div>
                     </div>
+                    <svg 
+                      class="w-4 h-4 text-text-neutral transform transition-all duration-300 group-hover:text-primary-green group-hover:scale-110" 
+                      :class="{ 'rotate-90': expandedFunctions.has(func.id) }"
+                      viewBox="0 0 16 16" 
+                      fill="currentColor"
+                    >
+                      <path d="M8 4L12 8L8 12L7 11L10 8L7 5L8 4Z"/>
+                    </svg>
                   </div>
                   
-                  <!-- Use cases -->
-                  <div v-if="func.use_cases && func.use_cases.length > 0">
-                    <h4 class="text-xs text-text-white font-medium mb-2">Use Cases:</h4>
-                    <div class="flex flex-wrap gap-1">
-                      <span 
-                        v-for="useCase in func.use_cases.slice(0, 3)" 
-                        :key="useCase"
-                        class="px-2 py-1 bg-primary-green/20 text-primary-green text-xs rounded"
-                      >
-                        {{ useCase }}
-                      </span>
+                  <!-- Expandable content with smooth animation -->
+                  <transition
+                    name="expand"
+                    enter-active-class="transition-all duration-300 ease-out"
+                    enter-from-class="opacity-0 max-h-0 transform scale-y-0"
+                    enter-to-class="opacity-100 max-h-96 transform scale-y-100"
+                    leave-active-class="transition-all duration-200 ease-in"
+                    leave-from-class="opacity-100 max-h-96 transform scale-y-100"
+                    leave-to-class="opacity-0 max-h-0 transform scale-y-0"
+                  >
+                    <div 
+                      v-if="expandedFunctions.has(func.id)"
+                      class="px-4 pb-4 origin-top"
+                    >
+                      <p class="text-sm text-text-neutral mt-2 mb-3 animate-fade-in" style="animation-fill-mode: forwards; opacity: 0;">{{ func.description }}</p>
+                      
+                      <!-- Parameters with enhanced styling -->
+                      <div v-if="func.parameters && func.parameters.length > 0" class="mb-3">
+                        <h4 class="text-xs text-text-white font-medium mb-2 gradient-text">Parameters:</h4>
+                        <div class="space-y-1">
+                          <div 
+                            v-for="(param, paramIndex) in func.parameters" 
+                            :key="param.name" 
+                            class="text-xs animate-slide-in-right"
+                            :style="{ 'animation-delay': `${paramIndex * 50}ms`, 'animation-fill-mode': 'forwards', 'opacity': '0' }"
+                          >
+                            <span class="text-primary-green font-medium">{{ param.name }}</span>
+                            <span v-if="param.required" class="text-red-400 ml-1">*</span>
+                            <span class="text-text-neutral ml-2">{{ param.description }}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Use cases with enhanced styling -->
+                      <div v-if="func.use_cases && func.use_cases.length > 0">
+                        <h4 class="text-xs text-text-white font-medium mb-2 gradient-text">Use Cases:</h4>
+                        <div class="flex flex-wrap gap-1">
+                          <span 
+                            v-for="(useCase, useCaseIndex) in func.use_cases.slice(0, 3)" 
+                            :key="useCase"
+                            class="px-2 py-1 bg-primary-green/20 text-primary-green text-xs rounded transition-all duration-300 hover:bg-primary-green/30 hover:scale-105 animate-scale-in"
+                            :style="{ 'animation-delay': `${useCaseIndex * 100}ms`, 'animation-fill-mode': 'forwards', 'opacity': '0' }"
+                          >
+                            {{ useCase }}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  </transition>
                 </div>
-              </div>
+              </transition-group>
               
               <!-- No filtered results -->
               <div v-if="platformFunctions.length === 0 && functionStore.hasFunctions" class="text-center py-12">
@@ -1352,10 +1419,35 @@ watch(selectedMode, (newMode) => {
               </div>
             </div>
           </div>
-      </template>
+        </template>
+        </div>
+      </transition>
     </div>
-  </div>  <!-- Open upload modal button (for demo) hidden when in assistant) -->
-  <button v-if="activeTab==='document' && !hasDocs && !showUploadModal" class="fixed bottom-6 right-6 bg-primary-green text-text-brand px-4 py-2" @click="openUploadModal">Upload</button>
+  </div>
+  
+  <!-- Enhanced floating upload button -->
+  <transition
+    name="fab"
+    enter-active-class="transition-all duration-500 ease-out"
+    enter-from-class="opacity-0 transform translate-y-4 scale-0"
+    enter-to-class="opacity-100 transform translate-y-0 scale-100"
+    leave-active-class="transition-all duration-300 ease-in"
+    leave-from-class="opacity-100 transform translate-y-0 scale-100"
+    leave-to-class="opacity-0 transform translate-y-4 scale-0"
+  >
+    <button 
+      v-if="activeTab==='document' && !hasDocs && !showUploadModal" 
+      @click="openUploadModal"
+      class="fixed bottom-6 right-6 bg-primary-green text-text-brand px-6 py-3 rounded-lg shadow-lg hover:bg-primary-green/90 transition-all duration-300 hover:scale-110 hover:shadow-xl btn-primary animate-pulse-glow group"
+    >
+      <div class="flex items-center gap-2">
+        <svg class="w-5 h-5 transition-transform duration-300 group-hover:scale-110" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+        </svg>
+        <span class="font-medium">Upload</span>
+      </div>
+    </button>
+  </transition>
 </template>
 
 <style scoped>
@@ -1376,6 +1468,233 @@ watch(selectedMode, (newMode) => {
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background: #555555;
+}
+
+/* Enhanced animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(190, 249, 117, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(190, 249, 117, 0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out forwards;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.4s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s infinite;
+}
+
+/* Transition effects */
+.tab-transition-enter-active {
+  transition: all 0.4s ease-out;
+}
+
+.tab-transition-leave-active {
+  transition: all 0.2s ease-in;
+}
+
+.tab-transition-enter-from {
+  opacity: 0;
+  transform: translateY(16px) scale(0.98);
+}
+
+.tab-transition-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.98);
+}
+
+.message-list-enter-active {
+  transition: all 0.5s ease-out;
+}
+
+.message-list-leave-active {
+  transition: all 0.3s ease-in;
+}
+
+.message-list-enter-from {
+  opacity: 0;
+  transform: translateY(16px) scale(0.95);
+}
+
+.message-list-leave-to {
+  opacity: 0;
+  transform: translateY(-16px) scale(0.95);
+}
+
+.message-list-move {
+  transition: transform 0.3s ease;
+}
+
+/* Hover effect enhancements */
+.hover-lift {
+  transition: all 0.2s ease-out;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Loading states */
+.skeleton-loading {
+  background: linear-gradient(90deg, #2a2a2a 25%, #353535 50%, #2a2a2a 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Button hover effects */
+.btn-primary {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.btn-primary:hover::before {
+  left: 100%;
+}
+
+/* Platform card animations */
+.platform-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.platform-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(190, 249, 117, 0.15);
+}
+
+/* Enhanced focus states */
+.focus-ring {
+  transition: all 0.2s ease-out;
+}
+
+.focus-ring:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(190, 249, 117, 0.3);
+}
+
+/* Smooth transitions for responsive elements */
+.responsive-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Gradient text effect */
+.gradient-text {
+  background: linear-gradient(135deg, #BEF975, #4ADE80);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Improved bounce animation */
+@keyframes enhanced-bounce {
+  0%, 20%, 53%, 100% {
+    animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+    transform: translateY(0);
+  }
+  40%, 43% {
+    animation-timing-function: cubic-bezier(0.755, 0.05, 0.855, 0.06);
+    transform: translateY(-6px);
+  }
+  70% {
+    animation-timing-function: cubic-bezier(0.755, 0.05, 0.855, 0.06);
+    transform: translateY(-3px);
+  }
+  80% {
+    transition-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+    transform: translateY(0);
+  }
+  90% {
+    transform: translateY(-1px);
+  }
+}
+
+/* Micro-interactions */
+.micro-bounce:active {
+  transform: scale(0.95);
+  transition: transform 0.1s ease-out;
+}
+
+.micro-grow:hover {
+  transform: scale(1.05);
+  transition: transform 0.2s ease-out;
 }
 
 /* Firefox scrollbar */
